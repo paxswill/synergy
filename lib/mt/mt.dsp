@@ -37,11 +37,11 @@ RSC=rc.exe
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "..\..\gen\build"
-# PROP Intermediate_Dir "..\..\gen\build"
+# PROP Output_Dir "Release"
+# PROP Intermediate_Dir "Release"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MT /W4 /GX /O2 /I "..\common" /I "..\arch" /I "..\base" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /Fd"..\..\gen\build\mt.pdb" /FD /c
+# ADD CPP /nologo /MT /W4 /GX /O2 /I "..\common" /I "..\arch" /I "..\base" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /FD /c
 # SUBTRACT CPP /YX
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
@@ -61,11 +61,11 @@ LIB32=link.exe -lib
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "..\..\gen\debug"
-# PROP Intermediate_Dir "..\..\gen\debug"
+# PROP Output_Dir "Debug"
+# PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W4 /Gm /GX /ZI /Od /I "..\common" /I "..\arch" /I "..\base" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /Fd"..\..\gen\debug\mt.pdb" /FD /GZ /c
+# ADD CPP /nologo /MTd /W4 /Gm /GX /ZI /Od /I "..\common" /I "..\arch" /I "..\base" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /FD /GZ /c
 # SUBTRACT CPP /YX
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
@@ -103,6 +103,10 @@ SOURCE=.\CThread.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\CTimerThread.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\XMT.cpp
 # End Source File
 # End Group
@@ -124,6 +128,10 @@ SOURCE=.\CMutex.h
 # Begin Source File
 
 SOURCE=.\CThread.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\CTimerThread.h
 # End Source File
 # Begin Source File
 

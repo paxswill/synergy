@@ -15,26 +15,64 @@
 #ifndef CSERVERTASKBARRECEIVER_H
 #define CSERVERTASKBARRECEIVER_H
 
+#include "CMutex.h"
 #include "CString.h"
 #include "IArchTaskBarReceiver.h"
-#include "stdvector.h"
 
 class CServer;
+class IJob;
 
 //! Implementation of IArchTaskBarReceiver for the synergy server
 class CServerTaskBarReceiver : public IArchTaskBarReceiver {
 public:
+	enum EState {
+		kNotRunning,
+		kNotWorking,
+		kNotConnected,
+		kConnected,
+		kMaxState
+	};
+
 	CServerTaskBarReceiver();
 	virtual ~CServerTaskBarReceiver();
 
 	//! @name manipulators
 	//@{
 
-	//! Update status
+	//! Set server
 	/*!
-	Determine the status and query required information from the server.
+	Sets the server.  The receiver will query state from this server.
 	*/
-	void				updateStatus(CServer*, const CString& errorMsg);
+	void				setServer(CServer*);
+
+	//! Set state
+	/*!
+	Sets the current server state.
+	*/
+	void				setState(EState);
+
+	//! Set the quit job that causes the server to quit
+	/*!
+	Set the job that causes the server to quit.
+	*/
+	void				setQuitJob(IJob* adopted);
+
+	//@}
+	//! @name accessors
+	//@{
+
+	//! Get state
+	/*!
+	Returns the current server state.  The receiver is not locked
+	by this call;  the caller must do the locking.
+	*/
+	EState				getState() const;
+
+	//! Get server
+	/*!
+	Returns the server set by \c setServer().
+	*/
+	CServer*			getServer() const;
 
 	//@}
 
@@ -48,28 +86,6 @@ public:
 	virtual std::string	getToolTip() const;
 
 protected:
-	typedef std::vector<CString> CClients;
-	enum EState {
-		kNotRunning,
-		kNotWorking,
-		kNotConnected,
-		kConnected,
-		kMaxState
-	};
-
-	//! Get status
-	EState				getStatus() const;
-
-	//! Get error message
-	const CString&		getErrorMessage() const;
-
-	//! Get connected clients
-	const CClients&		getClients() const;
-
-	//! Quit app
-	/*!
-	Causes the application to quit gracefully
-	*/
 	void				quit();
 
 	//! Status change notification
@@ -77,12 +93,18 @@ protected:
 	Called when status changes.  The default implementation does
 	nothing.
 	*/
-	virtual void		onStatusChanged(CServer* server);
+	virtual void		onStatusChanged();
 
 private:
+	void				statusChanged(void*);
+
+private:
+	CMutex				m_mutex;
+	IJob*				m_quit;
 	EState				m_state;
+	CServer*			m_server;
+	IJob*				m_job;
 	CString				m_errorMessage;
-	CClients			m_clients;
 };
 
 #endif

@@ -33,7 +33,6 @@ CArchDaemonNone::installDaemon(const char*,
 				const char*,
 				const char*,
 				const char*,
-				const char*,
 				bool)
 {
 	// do nothing

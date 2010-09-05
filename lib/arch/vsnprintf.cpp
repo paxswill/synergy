@@ -28,7 +28,7 @@ ARCH_STRING::vsnprintf(char* str, int size, const char* fmt, va_list ap)
 	return n;
 }
 
-#elif SYSAPI_UNIX // !HAVE_VSNPRINTF
+#elif UNIX_LIKE // !HAVE_VSNPRINTF
 
 #include <stdio.h>
 
@@ -54,8 +54,9 @@ ARCH_STRING::vsnprintf(char* str, int size, const char* fmt, va_list ap)
 	}
 }
 
-#else // !HAVE_VSNPRINTF && !SYSAPI_UNIX
+#else // !HAVE_VSNPRINTF && !UNIX_LIKE
 
+// FIXME
 #error vsnprintf not implemented
 
 #endif // !HAVE_VSNPRINTF

@@ -13,7 +13,6 @@
  */
 
 #include "CArchTaskBarWindows.h"
-#include "CArchMiscWindows.h"
 #include "IArchTaskBarReceiver.h"
 #include "CArch.h"
 #include "XArch.h"
@@ -73,7 +72,7 @@ CArchTaskBarWindows::CArchTaskBarWindows(void* appInstance) :
 CArchTaskBarWindows::~CArchTaskBarWindows()
 {
 	if (m_thread != NULL) {
-		PostMessage(m_hwnd, WM_QUIT, 0, 0);
+		ARCH->cancelThread(m_thread);
 		ARCH->wait(m_thread, -1.0);
 		ARCH->closeThread(m_thread);
 	}
@@ -85,13 +84,23 @@ CArchTaskBarWindows::~CArchTaskBarWindows()
 void
 CArchTaskBarWindows::addDialog(HWND hwnd)
 {
-	CArchMiscWindows::addDialog(hwnd);
+	// add dialog to added dialogs list
+	ARCH->lockMutex(s_instance->m_mutex);
+	s_instance->m_addedDialogs.insert(std::make_pair(hwnd, true));
+	ARCH->unlockMutex(s_instance->m_mutex);
 }
 
 void
 CArchTaskBarWindows::removeDialog(HWND hwnd)
 {
-	CArchMiscWindows::removeDialog(hwnd);
+	// mark dialog as removed
+	ARCH->lockMutex(s_instance->m_mutex);
+	CDialogs::iterator index = s_instance->m_dialogs.find(hwnd);
+	if (index != s_instance->m_dialogs.end()) {
+		index->second = false;
+	}
+	s_instance->m_addedDialogs.erase(hwnd);
+	ARCH->unlockMutex(s_instance->m_mutex);
 }
 
 void
@@ -465,23 +474,40 @@ CArchTaskBarWindows::threadMainLoop()
 
 	// handle failure
 	if (m_hwnd == NULL) {
-		UnregisterClass(reinterpret_cast<LPCTSTR>(windowClass), s_appInstance);
+		UnregisterClass((LPCTSTR)windowClass, s_appInstance);
 		return;
 	}
 
-	// main loop
-	MSG msg;
-	while (GetMessage(&msg, NULL, 0, 0)) {
-		if (!processDialogs(&msg)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+	try {
+		// main loop
+		MSG msg;
+		for (;;) {
+			// wait for message
+			if (ARCH->waitForEvent(NULL, -1.0) != IArchMultithread::kEvent) {
+				continue;
+			}
+
+			// peek for message and remove it.  we don't GetMessage()
+			// because we should never block here, only in waitForEvent().
+			if (!PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+				continue;
+			}
+
+			// check message against dialogs
+			if (!processDialogs(&msg)) {
+				// process message
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
 		}
 	}
-
-	// clean up
-	removeAllIcons();
-	DestroyWindow(m_hwnd);
-	UnregisterClass(reinterpret_cast<LPCTSTR>(windowClass), s_appInstance);
+	catch (XThread&) {
+		// clean up
+		removeAllIcons();
+		DestroyWindow(m_hwnd);
+		UnregisterClass((LPCTSTR)windowClass, s_appInstance);
+		throw;
+	}
 }
 
 void*

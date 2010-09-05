@@ -12,37 +12,20 @@
 
 ## Process this file with automake to produce Makefile.in
 NULL =
+DEPTH = ../..
+VDEPTH = ./$(VPATH)/$(DEPTH)
 
-COMMON_SOURCE_FILES =					\
-	CServerTaskBarReceiver.cpp			\
-	CServerTaskBarReceiver.h			\
-	synergys.cpp						\
-	$(NULL)
-XWINDOWS_SOURCE_FILES =					\
-	CXWindowsServerTaskBarReceiver.cpp	\
-	CXWindowsServerTaskBarReceiver.h	\
-	$(NULL)
-MSWINDOWS_SOURCE_FILES =				\
+EXTRA_DIST =							\
 	CMSWindowsServerTaskBarReceiver.cpp	\
 	CMSWindowsServerTaskBarReceiver.h	\
 	resource.h							\
-	synergys.rc							\
-	$(NULL)
-CARBON_SOURCE_FILES =					\
-	COSXServerTaskBarReceiver.cpp		\
-	COSXServerTaskBarReceiver.h			\
-	$(NULL)
-
-EXTRA_DIST =							\
-	synergys.dsp						\
 	synergys.ico						\
+	synergys.dsp						\
+	synergys.rc							\
 	tb_error.ico						\
 	tb_idle.ico							\
 	tb_run.ico							\
 	tb_wait.ico							\
-	$(XWINDOWS_SOURCE_FILES)			\
-	$(MSWINDOWS_SOURCE_FILES)			\
-	$(CARBON_SOURCE_FILES)				\
 	$(NULL)
 
 MAINTAINERCLEANFILES =					\
@@ -50,43 +33,39 @@ MAINTAINERCLEANFILES =					\
 	$(NULL)
 
 bin_PROGRAMS = synergys
-if XWINDOWS
-synergys_SOURCES =						\
-	$(COMMON_SOURCE_FILES)				\
-	$(XWINDOWS_SOURCE_FILES)			\
+synergys_SOURCES = 						\
+	CServerTaskBarReceiver.cpp			\
+	CServerTaskBarReceiver.h			\
+	CXWindowsServerTaskBarReceiver.cpp	\
+	CXWindowsServerTaskBarReceiver.h	\
+	synergys.cpp						\
 	$(NULL)
-endif
-if MSWINDOWS
-synergys_SOURCES =						\
-	$(COMMON_SOURCE_FILES)				\
-	$(MSWINDOWS_SOURCE_FILES)			\
-	$(NULL)
-endif
-if CARBON
-synergys_SOURCES =						\
-	$(COMMON_SOURCE_FILES)				\
-	$(CARBON_SOURCE_FILES)				\
-	$(NULL)
-endif
-synergys_LDADD =								\
-	$(top_builddir)/lib/server/libserver.a		\
-	$(top_builddir)/lib/platform/libplatform.a	\
-	$(top_builddir)/lib/synergy/libsynergy.a	\
-	$(top_builddir)/lib/net/libnet.a			\
-	$(top_builddir)/lib/io/libio.a				\
-	$(top_builddir)/lib/mt/libmt.a				\
-	$(top_builddir)/lib/base/libbase.a			\
-	$(top_builddir)/lib/common/libcommon.a		\
-	$(top_builddir)/lib/arch/libarch.a			\
+synergys_LDADD =						\
+	$(DEPTH)/lib/server/libserver.a		\
+	$(DEPTH)/lib/platform/libplatform.a	\
+	$(DEPTH)/lib/synergy/libsynergy.a	\
+	$(DEPTH)/lib/net/libnet.a			\
+	$(DEPTH)/lib/http/libhttp.a			\
+	$(DEPTH)/lib/io/libio.a				\
+	$(DEPTH)/lib/mt/libmt.a				\
+	$(DEPTH)/lib/base/libbase.a			\
+	$(DEPTH)/lib/arch/libarch.a			\
+	$(X_LIBS)							\
+	$(X_PRE_LIBS)						\
+	-lXtst								\
+	-lXext								\
+	-lX11								\
+	$(X_EXTRA_LIBS)						\
 	$(NULL)
 INCLUDES =								\
-	-I$(top_srcdir)/lib/common			\
-	-I$(top_srcdir)/lib/arch			\
-	-I$(top_srcdir)/lib/base 			\
-	-I$(top_srcdir)/lib/mt	 			\
-	-I$(top_srcdir)/lib/io	 			\
-	-I$(top_srcdir)/lib/net	 			\
-	-I$(top_srcdir)/lib/synergy			\
-	-I$(top_srcdir)/lib/platform 		\
-	-I$(top_srcdir)/lib/server	 		\
+	-I$(VDEPTH)/lib/common				\
+	-I$(VDEPTH)/lib/arch				\
+	-I$(VDEPTH)/lib/base 				\
+	-I$(VDEPTH)/lib/mt	 				\
+	-I$(VDEPTH)/lib/io	 				\
+	-I$(VDEPTH)/lib/http 				\
+	-I$(VDEPTH)/lib/net	 				\
+	-I$(VDEPTH)/lib/synergy				\
+	-I$(VDEPTH)/lib/platform 			\
+	-I$(VDEPTH)/lib/server	 			\
 	$(NULL)

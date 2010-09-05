@@ -13,7 +13,6 @@
  */
 
 #include "CArchFileUnix.h"
-#include <stdio.h>
 #include <unistd.h>
 #include <pwd.h>
 #include <sys/types.h>
@@ -52,29 +51,26 @@ CArchFileUnix::getBasename(const char* pathname)
 std::string
 CArchFileUnix::getUserDirectory()
 {
-	char* buffer = NULL;
-	std::string dir;
 #if HAVE_GETPWUID_R
 	struct passwd pwent;
 	struct passwd* pwentp;
 #if defined(_SC_GETPW_R_SIZE_MAX)
 	long size = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (size == -1) {
-		size = BUFSIZ;
-	}
 #else
 	long size = BUFSIZ;
 #endif
-	buffer = new char[size];
+	char* buffer = new char[size];
 	getpwuid_r(getuid(), &pwent, buffer, size, &pwentp);
+	delete[] buffer;
 #else
 	struct passwd* pwentp = getpwuid(getuid());
 #endif
 	if (pwentp != NULL && pwentp->pw_dir != NULL) {
-		dir = pwentp->pw_dir;
+		return pwentp->pw_dir;
 	}
-	delete[] buffer;
-	return dir;
+	else {
+		return std::string();
+	}
 }
 
 std::string

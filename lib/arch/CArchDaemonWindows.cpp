@@ -24,9 +24,10 @@
 
 CArchDaemonWindows*		CArchDaemonWindows::s_daemon = NULL;
 
-CArchDaemonWindows::CArchDaemonWindows()
+CArchDaemonWindows::CArchDaemonWindows() :
+	m_daemonThread(NULL)
 {
-	m_quitMessage = RegisterWindowMessage("SynergyDaemonExit");
+	// do nothing
 }
 
 CArchDaemonWindows::~CArchDaemonWindows()
@@ -54,17 +55,6 @@ CArchDaemonWindows::daemonRunning(bool running)
 	}
 }
 
-UINT
-CArchDaemonWindows::getDaemonQuitMessage()
-{
-	if (s_daemon != NULL) {
-		return s_daemon->doGetDaemonQuitMessage();
-	}
-	else {
-		return 0;
-	}
-}
-
 void
 CArchDaemonWindows::daemonFailed(int result)
 {
@@ -82,14 +72,13 @@ CArchDaemonWindows::installDaemon(const char* name,
 				const char* description,
 				const char* pathname,
 				const char* commandLine,
-				const char* dependencies,
 				bool allUsers)
 {
 	// if not for all users then use the user's autostart registry.
 	// key.  if windows 95 family then use windows 95 services key.
 	if (!allUsers || CArchMiscWindows::isWindows95Family()) {
 		// open registry
-		HKEY key = (allUsers && CArchMiscWindows::isWindows95Family()) ?
+		HKEY key = CArchMiscWindows::isWindows95Family() ?
 							open95ServicesKey() : openUserStartupKey();
 		if (key == NULL) {
 			// can't open key
@@ -131,7 +120,7 @@ CArchDaemonWindows::installDaemon(const char* name,
 								pathname,
 								NULL,
 								NULL,
-								dependencies,
+								NULL,
 								NULL,
 								NULL);
 		if (service == NULL) {
@@ -192,7 +181,7 @@ CArchDaemonWindows::uninstallDaemon(const char* name, bool allUsers)
 	// key.  if windows 95 family then use windows 95 services key.
 	if (!allUsers || CArchMiscWindows::isWindows95Family()) {
 		// open registry
-		HKEY key = (allUsers && CArchMiscWindows::isWindows95Family()) ?
+		HKEY key = CArchMiscWindows::isWindows95Family() ?
 							open95ServicesKey() : openUserStartupKey();
 		if (key == NULL) {
 			// can't open key.  daemon is probably not installed.
@@ -278,7 +267,7 @@ CArchDaemonWindows::daemonize(const char* name, DaemonFunc func)
 			FreeLibrary(kernel);
 			throw XArchDaemonFailed(new XArchEvalWindows(err));
 		}
-		if (RegisterServiceProcess(0, 1) == 0) {
+		if (RegisterServiceProcess(NULL, 1) == 0) {
 			// RegisterServiceProcess failed
 			DWORD err = GetLastError();
 			FreeLibrary(kernel);
@@ -323,7 +312,7 @@ CArchDaemonWindows::canInstallDaemon(const char* name, bool allUsers)
 	// key.  if windows 95 family then use windows 95 services key.
 	if (!allUsers || CArchMiscWindows::isWindows95Family()) {
 		// check if we can open the registry key
-		HKEY key = (allUsers && CArchMiscWindows::isWindows95Family()) ?
+		HKEY key = CArchMiscWindows::isWindows95Family() ?
 							open95ServicesKey() : openUserStartupKey();
 		CArchMiscWindows::closeKey(key);
 		return (key != NULL);
@@ -355,7 +344,7 @@ CArchDaemonWindows::isDaemonInstalled(const char* name, bool allUsers)
 	// key.  if windows 95 family then use windows 95 services key.
 	if (!allUsers || CArchMiscWindows::isWindows95Family()) {
 		// check if we can open the registry key
-		HKEY key = (allUsers && CArchMiscWindows::isWindows95Family()) ?
+		HKEY key = CArchMiscWindows::isWindows95Family() ?
 							open95ServicesKey() : openUserStartupKey();
 		if (key == NULL) {
 			return false;
@@ -448,89 +437,122 @@ CArchDaemonWindows::openUserStartupKey()
 	return CArchMiscWindows::openKey(HKEY_CURRENT_USER, s_keyNames);
 }
 
-bool
-CArchDaemonWindows::isRunState(DWORD state)
-{
-	switch (state) {
-	case SERVICE_START_PENDING:
-	case SERVICE_CONTINUE_PENDING:
-	case SERVICE_RUNNING:
-		return true;
-
-	default:
-		return false;
-	}
-}
-
 int
 CArchDaemonWindows::doRunDaemon(RunFunc run)
 {
 	// should only be called from DaemonFunc
 	assert(m_serviceMutex != NULL);
-	assert(run            != NULL);
+	assert(run  != NULL);
 
-	// create message queue for this thread
-	MSG dummy;
-	PeekMessage(&dummy, NULL, 0, 0, PM_NOREMOVE);
-
-	int result = 0;
 	ARCH->lockMutex(m_serviceMutex);
-	m_daemonThreadID = GetCurrentThreadId();
-	while (m_serviceState != SERVICE_STOPPED) {
-		// wait until we're told to start
-		while (!isRunState(m_serviceState) &&
-				m_serviceState != SERVICE_STOP_PENDING) {
-			ARCH->waitCondVar(m_serviceCondVar, m_serviceMutex, -1.0);
-		}
+	try {
+		int result;
+		m_serviceHandlerWaiting = false;
+		m_serviceRunning        = false;
+		for (;;) {
+			// mark server as running
+			setStatus(SERVICE_RUNNING);
 
-		// run unless told to stop
-		if (m_serviceState != SERVICE_STOP_PENDING) {
-			ARCH->unlockMutex(m_serviceMutex);
-			try {
-				result = run();
-			}
-			catch (...) {
-				ARCH->lockMutex(m_serviceMutex);
-				setStatusError(0);
-				m_serviceState = SERVICE_STOPPED;
-				setStatus(m_serviceState);
+			// run callback in another thread
+			m_serviceRunning = true;
+			m_daemonThread = ARCH->newThread(
+							&CArchDaemonWindows::runDaemonThreadEntry, run);
+			ARCH->wait(m_daemonThread, -1.0);
+			result = reinterpret_cast<int>(
+							ARCH->getResultOfThread(m_daemonThread));
+			m_serviceRunning = false;
+
+			// notify handler that the server stopped.  if handler
+			// isn't waiting then we stopped unexpectedly and we
+			// quit.
+			if (m_serviceHandlerWaiting) {
+				m_serviceHandlerWaiting = false;
 				ARCH->broadcastCondVar(m_serviceCondVar);
-				ARCH->unlockMutex(m_serviceMutex);
-				throw;
 			}
-			ARCH->lockMutex(m_serviceMutex);
+			else {
+				break;
+			}
+
+			// wait until we're told what to do next
+			while (m_serviceState != SERVICE_RUNNING &&
+					m_serviceState != SERVICE_STOPPED) {
+				ARCH->waitCondVar(m_serviceCondVar, m_serviceMutex, -1.0);
+			}
+
+			// exit loop if we've been told to stop
+			if (m_serviceState == SERVICE_STOPPED) {
+				break;
+			}
+
+			// done with callback thread
+			ARCH->closeThread(m_daemonThread);
+			m_daemonThread = NULL;
 		}
 
-		// notify of new state
-		if (m_serviceState == SERVICE_PAUSE_PENDING) {
-			m_serviceState = SERVICE_PAUSED;
-		}
-		else {
-			m_serviceState = SERVICE_STOPPED;
-		}
+		// prevent daemonHandler from changing state
+		m_serviceState = SERVICE_STOPPED;
+
+		// tell service control that the service is stopped.
+		// FIXME -- hopefully this will ensure that our handler won't
+		// be called again but i can't find documentation that
+		// verifies that.  if it does it'll crash on the mutex that
+		// we're about to destroy.
 		setStatus(m_serviceState);
-		ARCH->broadcastCondVar(m_serviceCondVar);
+
+		// clean up
+		if (m_daemonThread != NULL) {
+			ARCH->closeThread(m_daemonThread);
+			m_daemonThread = NULL;
+		}
+		ARCH->unlockMutex(m_serviceMutex);
+
+		return result;
 	}
-	ARCH->unlockMutex(m_serviceMutex);
-	return result;
+	catch (...) {
+		// FIXME -- report error
+
+		// prevent serviceHandler from changing state
+		m_serviceState = SERVICE_STOPPED;
+
+		// set status
+		setStatusError(0);
+
+		// wake up serviceHandler if it's waiting then wait for it
+		if (m_serviceHandlerWaiting) {
+			m_serviceHandlerWaiting = false;
+			ARCH->broadcastCondVar(m_serviceCondVar);
+			ARCH->waitCondVar(m_serviceCondVar, m_serviceMutex, -1.0);
+			// serviceHandler has exited by now
+		}
+
+		ARCH->unlockMutex(m_serviceMutex);
+		throw;
+	}
 }
 
 void
 CArchDaemonWindows::doDaemonRunning(bool running)
 {
-	ARCH->lockMutex(m_serviceMutex);
 	if (running) {
-		m_serviceState = SERVICE_RUNNING;
-		setStatus(m_serviceState);
-		ARCH->broadcastCondVar(m_serviceCondVar);
+		ARCH->unlockMutex(m_serviceMutex);
 	}
-	ARCH->unlockMutex(m_serviceMutex);
+	else {
+		ARCH->lockMutex(m_serviceMutex);
+	}
 }
 
-UINT
-CArchDaemonWindows::doGetDaemonQuitMessage()
+void*
+CArchDaemonWindows::runDaemonThread(RunFunc run)
 {
-	return m_quitMessage;
+	return reinterpret_cast<void*>(run());
+}
+
+void*
+CArchDaemonWindows::runDaemonThreadEntry(void* vrun)
+{
+	assert(s_daemon != NULL);
+
+	return s_daemon->runDaemonThread(reinterpret_cast<RunFunc>(vrun));
 }
 
 void
@@ -561,8 +583,6 @@ CArchDaemonWindows::setStatus(DWORD state, DWORD step, DWORD waitHint)
 void
 CArchDaemonWindows::setStatusError(DWORD error)
 {
-	assert(s_daemon != NULL);
-
 	SERVICE_STATUS status;
 	status.dwServiceType             = SERVICE_WIN32_OWN_PROCESS |
 										SERVICE_INTERACTIVE_PROCESS;
@@ -585,13 +605,14 @@ CArchDaemonWindows::serviceMain(DWORD argc, LPTSTR* argvIn)
 	const char** argv = const_cast<const char**>(argvIn);
 
 	// create synchronization objects
-	m_serviceMutex        = ARCH->newMutex();
-	m_serviceCondVar      = ARCH->newCondVar();
-	
-	// register our service handler function
+	m_serviceMutex   = ARCH->newMutex();
+	m_serviceCondVar = ARCH->newCondVar();
+	m_serviceState   = SERVICE_RUNNING;
+
+	// register our service handler functiom
 	m_statusHandle = RegisterServiceCtrlHandler(argv[0],
 								&CArchDaemonWindows::serviceHandlerEntry);
-	if (m_statusHandle == 0) {
+	if (m_statusHandle == NULL) {
 		// cannot start as service
 		m_daemonResult = -1;
 		ARCH->closeCondVar(m_serviceCondVar);
@@ -600,8 +621,7 @@ CArchDaemonWindows::serviceMain(DWORD argc, LPTSTR* argvIn)
 	}
 
 	// tell service control manager that we're starting
-	m_serviceState = SERVICE_START_PENDING;
-	setStatus(m_serviceState, 0, 10000);
+	setStatus(SERVICE_START_PENDING, 0, 10000);
 
 	// if no arguments supplied then try getting them from the registry.
 	// the first argument doesn't count because it's the service name.
@@ -706,40 +726,58 @@ CArchDaemonWindows::serviceHandler(DWORD ctrl)
 	ARCH->lockMutex(m_serviceMutex);
 
 	// ignore request if service is already stopped
-	if (s_daemon == NULL || m_serviceState == SERVICE_STOPPED) {
-		if (s_daemon != NULL) {
-			setStatus(m_serviceState);
-		}
+	if (m_serviceState == SERVICE_STOPPED) {
+		setStatus(m_serviceState);
 		ARCH->unlockMutex(m_serviceMutex);
 		return;
 	}
 
 	switch (ctrl) {
 	case SERVICE_CONTROL_PAUSE:
+		// update state
 		m_serviceState = SERVICE_PAUSE_PENDING;
 		setStatus(m_serviceState, 0, 5000);
-		PostThreadMessage(m_daemonThreadID, m_quitMessage, 0, 0);
-		while (isRunState(m_serviceState)) {
+
+		// stop run callback if running and wait for it to finish
+		if (m_serviceRunning) {
+			m_serviceHandlerWaiting = true;
+			ARCH->cancelThread(m_daemonThread);
 			ARCH->waitCondVar(m_serviceCondVar, m_serviceMutex, -1.0);
 		}
+
+		// update state if service hasn't stopped while we were waiting
+		if (m_serviceState != SERVICE_STOPPED) {
+			m_serviceState = SERVICE_PAUSED;
+		}
+		ARCH->broadcastCondVar(m_serviceCondVar);
 		break;
 
 	case SERVICE_CONTROL_CONTINUE:
-		// FIXME -- maybe should flush quit messages from queue
-		m_serviceState = SERVICE_CONTINUE_PENDING;
-		setStatus(m_serviceState, 0, 5000);
+		// required status update
+		setStatus(m_serviceState);
+
+		// update state but let main loop send RUNNING notification
+		m_serviceState = SERVICE_RUNNING;
 		ARCH->broadcastCondVar(m_serviceCondVar);
-		break;
+		ARCH->unlockMutex(m_serviceMutex);
+		return;
 
 	case SERVICE_CONTROL_STOP:
 	case SERVICE_CONTROL_SHUTDOWN:
+		// update state
 		m_serviceState = SERVICE_STOP_PENDING;
 		setStatus(m_serviceState, 0, 5000);
-		PostThreadMessage(m_daemonThreadID, m_quitMessage, 0, 0);
-		ARCH->broadcastCondVar(m_serviceCondVar);
-		while (isRunState(m_serviceState)) {
+
+		// stop run callback if running and wait for it to finish
+		if (m_serviceRunning) {
+			m_serviceHandlerWaiting = true;
+			ARCH->cancelThread(m_daemonThread);
 			ARCH->waitCondVar(m_serviceCondVar, m_serviceMutex, -1.0);
 		}
+
+		// update state
+		m_serviceState = SERVICE_STOPPED;
+		ARCH->broadcastCondVar(m_serviceCondVar);
 		break;
 
 	default:
@@ -747,9 +785,11 @@ CArchDaemonWindows::serviceHandler(DWORD ctrl)
 		// fall through
 
 	case SERVICE_CONTROL_INTERROGATE:
-		setStatus(m_serviceState);
 		break;
 	}
+
+	// send update
+	setStatus(m_serviceState);
 
 	ARCH->unlockMutex(m_serviceMutex);
 }

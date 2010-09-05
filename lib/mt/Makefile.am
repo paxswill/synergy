@@ -12,6 +12,8 @@
 
 ## Process this file with automake to produce Makefile.in
 NULL =
+DEPTH = ../..
+VDEPTH = ./$(VPATH)/$(DEPTH)
 
 EXTRA_DIST =				\
 	mt.dsp					\
@@ -23,20 +25,22 @@ MAINTAINERCLEANFILES =		\
 
 noinst_LIBRARIES = libmt.a
 libmt_a_SOURCES = 			\
-	CCondVar.cpp			\
 	CLock.cpp				\
 	CMutex.cpp				\
+	CCondVar.cpp			\
 	CThread.cpp				\
+	CTimerThread.cpp		\
 	XMT.cpp					\
 	CCondVar.h				\
 	CLock.h					\
 	CMutex.h				\
 	CThread.h				\
+	CTimerThread.h			\
 	XMT.h					\
 	XThread.h				\
 	$(NULL)
-INCLUDES =						\
-	-I$(top_srcdir)/lib/common	\
-	-I$(top_srcdir)/lib/arch	\
-	-I$(top_srcdir)/lib/base 	\
+INCLUDES =					\
+	-I$(VDEPTH)/lib/common	\
+	-I$(VDEPTH)/lib/arch	\
+	-I$(VDEPTH)/lib/base 	\
 	$(NULL)

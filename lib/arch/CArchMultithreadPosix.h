@@ -37,21 +37,6 @@ public:
 	CArchMultithreadPosix();
 	virtual ~CArchMultithreadPosix();
 
-	//! @name manipulators
-	//@{
-
-	void				setNetworkDataForCurrentThread(void*);
-
-	//@}
-	//! @name accessors
-	//@{
-
-	void*				getNetworkDataForThread(CArchThread);
-
-	static CArchMultithreadPosix*	getInstance();
-
-	//@}
-
 	// IArchMultithread overrides
 	virtual CArchCond	newCondVar();
 	virtual void		closeCondVar(CArchCond);
@@ -70,12 +55,11 @@ public:
 	virtual void		setPriorityOfThread(CArchThread, int n);
 	virtual void		testCancelThread();
 	virtual bool		wait(CArchThread, double timeout);
+	virtual EWaitResult	waitForEvent(CArchThread, double timeout);
 	virtual bool		isSameThread(CArchThread, CArchThread);
 	virtual bool		isExitedThread(CArchThread);
 	virtual void*		getResultOfThread(CArchThread);
 	virtual ThreadID	getIDOfThread(CArchThread);
-	virtual void		setSignalHandler(ESignal, SignalFunc, void*);
-	virtual void		raiseSignal(ESignal);
 
 private:
 	void				startSignalHandler();
@@ -106,8 +90,6 @@ private:
 	ThreadID			m_nextID;
 
 	pthread_t			m_signalThread;
-	SignalFunc			m_signalFunc[kNUM_SIGNALS];
-	void*				m_signalUserData[kNUM_SIGNALS];
 };
 
 #endif

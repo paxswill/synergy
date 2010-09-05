@@ -17,12 +17,10 @@
 
 #include "CClientTaskBarReceiver.h"
 
-class CBufferedLogOutputter;
-
 //! Implementation of CClientTaskBarReceiver for X Windows
 class CXWindowsClientTaskBarReceiver : public CClientTaskBarReceiver {
 public:
-	CXWindowsClientTaskBarReceiver(const CBufferedLogOutputter*);
+	CXWindowsClientTaskBarReceiver();
 	virtual ~CXWindowsClientTaskBarReceiver();
 
 	// IArchTaskBarReceiver overrides
@@ -30,6 +28,10 @@ public:
 	virtual void		runMenu(int x, int y);
 	virtual void		primaryAction();
 	virtual const Icon	getIcon() const;
+
+protected:
+	// CClientTaskBarReceiver overrides
+	virtual void		onStatusChanged();
 };
 
 #endif

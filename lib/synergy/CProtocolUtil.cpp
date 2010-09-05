@@ -13,7 +13,8 @@
  */
 
 #include "CProtocolUtil.h"
-#include "IStream.h"
+#include "IInputStream.h"
+#include "IOutputStream.h"
 #include "CLog.h"
 #include "stdvector.h"
 #include <cctype>
@@ -24,76 +25,51 @@
 //
 
 void
-CProtocolUtil::writef(IStream* stream, const char* fmt, ...)
+CProtocolUtil::writef(IOutputStream* stream, const char* fmt, ...)
 {
 	assert(stream != NULL);
 	assert(fmt != NULL);
 	LOG((CLOG_DEBUG2 "writef(%s)", fmt));
 
 	va_list args;
+
+	// determine total size to write
 	va_start(args, fmt);
-	UInt32 size = getLength(fmt, args);
+	UInt32 count = getLength(fmt, args);
 	va_end(args);
+
+	// done if nothing to write
+	if (count == 0) {
+		return;
+	}
+
+	// fill buffer
+	UInt8* buffer = new UInt8[count];
 	va_start(args, fmt);
-	vwritef(stream, fmt, size, args);
+	writef(buffer, fmt, args);
 	va_end(args);
+
+	// write buffer
+	UInt8* scan = buffer;
+	while (count > 0) {
+		const UInt32 n = stream->write(scan, count);
+		LOG((CLOG_DEBUG2 "wrote %d of %d bytes", n, count));
+		count -= n;
+		scan  += n;
+	}
+
+	delete[] buffer;
 }
 
-bool
-CProtocolUtil::readf(IStream* stream, const char* fmt, ...)
+void
+CProtocolUtil::readf(IInputStream* stream, const char* fmt, ...)
 {
 	assert(stream != NULL);
 	assert(fmt != NULL);
 	LOG((CLOG_DEBUG2 "readf(%s)", fmt));
 
-	bool result;
 	va_list args;
 	va_start(args, fmt);
-	try {
-		vreadf(stream, fmt, args);
-		result = true;
-	}
-	catch (XIO&) {
-		result = false;
-	}
-	va_end(args);
-	return result;
-}
-
-void
-CProtocolUtil::vwritef(IStream* stream,
-				const char* fmt, UInt32 size, va_list args)
-{
-	assert(stream != NULL);
-	assert(fmt != NULL);
-
-	// done if nothing to write
-	if (size == 0) {
-		return;
-	}
-
-	// fill buffer
-	UInt8* buffer = new UInt8[size];
-	writef(buffer, fmt, args);
-
-	try {
-		// write buffer
-		stream->write(buffer, size);
-		LOG((CLOG_DEBUG2 "wrote %d bytes", size));
-
-		delete[] buffer;
-	}
-	catch (XBase&) {
-		delete[] buffer;
-		throw;
-	}
-}
-
-void
-CProtocolUtil::vreadf(IStream* stream, const char* fmt, va_list args)
-{
-	assert(stream != NULL);
-	assert(fmt != NULL);
 
 	// begin scanning
 	while (*fmt) {
@@ -209,8 +185,11 @@ CProtocolUtil::vreadf(IStream* stream, const char* fmt, va_list args)
 				const bool useFixed = (len <= sizeof(buffer));
 
 				// allocate a buffer to read the data
-				UInt8* sBuffer = buffer;
-				if (!useFixed) {
+				UInt8* sBuffer;
+				if (useFixed) {
+					sBuffer = buffer;
+				}
+				else {
 					sBuffer = new UInt8[len];
 				}
 
@@ -263,6 +242,8 @@ CProtocolUtil::vreadf(IStream* stream, const char* fmt, va_list args)
 			++fmt;
 		}
 	}
+
+	va_end(args);
 }
 
 UInt32
@@ -504,7 +485,7 @@ CProtocolUtil::eatLength(const char** pfmt)
 }
 
 void
-CProtocolUtil::read(IStream* stream, void* vbuffer, UInt32 count)
+CProtocolUtil::read(IInputStream* stream, void* vbuffer, UInt32 count)
 {
 	assert(stream != NULL);
 	assert(vbuffer != NULL);
@@ -512,7 +493,7 @@ CProtocolUtil::read(IStream* stream, void* vbuffer, UInt32 count)
 	UInt8* buffer = reinterpret_cast<UInt8*>(vbuffer);
 	while (count > 0) {
 		// read more
-		UInt32 n = stream->read(buffer, count);
+		UInt32 n = stream->read(buffer, count, -1.0);
 
 		// bail if stream has hungup
 		if (n == 0) {

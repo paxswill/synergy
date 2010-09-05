@@ -23,7 +23,6 @@
 #include "IArchNetwork.h"
 #include "IArchSleep.h"
 #include "IArchString.h"
-#include "IArchSystem.h"
 #include "IArchTaskBar.h"
 #include "IArchTime.h"
 
@@ -53,7 +52,6 @@ class CArch : public IArchConsole,
 				public IArchNetwork,
 				public IArchSleep,
 				public IArchString,
-				public IArchSystem,
 				public IArchTaskBar,
 				public IArchTime {
 public:
@@ -82,7 +80,6 @@ public:
 							const char* description,
 							const char* pathname,
 							const char* commandLine,
-							const char* dependencies,
 							bool allUsers);
 	virtual void		uninstallDaemon(const char* name, bool allUsers);
 	virtual int			daemonize(const char* name, DaemonFunc func);
@@ -119,12 +116,11 @@ public:
 	virtual void		setPriorityOfThread(CArchThread, int n);
 	virtual void		testCancelThread();
 	virtual bool		wait(CArchThread, double timeout);
+	virtual EWaitResult	waitForEvent(CArchThread, double timeout);
 	virtual bool		isSameThread(CArchThread, CArchThread);
 	virtual bool		isExitedThread(CArchThread);
 	virtual void*		getResultOfThread(CArchThread);
 	virtual ThreadID	getIDOfThread(CArchThread);
-	virtual void		setSignalHandler(ESignal, SignalFunc, void*);
-	virtual void		raiseSignal(ESignal);
 
 	// IArchNetwork overrides
 	virtual CArchSocket	newSocket(EAddressFamily, ESocketType);
@@ -135,13 +131,13 @@ public:
 	virtual void		bindSocket(CArchSocket s, CArchNetAddress addr);
 	virtual void		listenOnSocket(CArchSocket s);
 	virtual CArchSocket	acceptSocket(CArchSocket s, CArchNetAddress* addr);
-	virtual bool		connectSocket(CArchSocket s, CArchNetAddress name);
+	virtual void		connectSocket(CArchSocket s, CArchNetAddress name);
 	virtual int			pollSocket(CPollEntry[], int num, double timeout);
-	virtual void		unblockPollSocket(CArchThread thread);
 	virtual size_t		readSocket(CArchSocket s, void* buf, size_t len);
 	virtual size_t		writeSocket(CArchSocket s,
 							const void* buf, size_t len);
 	virtual void		throwErrorOnSocket(CArchSocket);
+	virtual bool		setBlockingOnSocket(CArchSocket, bool blocking);
 	virtual bool		setNoDelayOnSocket(CArchSocket, bool noDelay);
 	virtual std::string		getHostName();
 	virtual CArchNetAddress	newAnyAddr(EAddressFamily);
@@ -154,7 +150,6 @@ public:
 	virtual void			setAddrPort(CArchNetAddress, int port);
 	virtual int				getAddrPort(CArchNetAddress);
 	virtual bool			isAnyAddr(CArchNetAddress);
-	virtual bool			isEqualAddr(CArchNetAddress, CArchNetAddress);
 
 	// IArchSleep overrides
 	virtual void		sleep(double timeout);
@@ -162,15 +157,14 @@ public:
 	// IArchString overrides
 	virtual int			vsnprintf(char* str,
 							int size, const char* fmt, va_list ap);
-	virtual int			convStringMBToWC(wchar_t*,
-							const char*, UInt32 n, bool* errors);
-	virtual int			convStringWCToMB(char*,
-							const wchar_t*, UInt32 n, bool* errors);
+	virtual CArchMBState	newMBState();
+	virtual void		closeMBState(CArchMBState);
+	virtual void		initMBState(CArchMBState);
+	virtual bool		isInitMBState(CArchMBState);
+	virtual int			convMBToWC(wchar_t*, const char*, int, CArchMBState);
+	virtual int			convWCToMB(char*, wchar_t, CArchMBState);
 	virtual EWideCharEncoding
 						getWideCharEncoding();
-
-	// IArchSystem overrides
-	virtual std::string	getOSName() const;
 
 	// IArchTaskBar
 	virtual void		addReceiver(IArchTaskBarReceiver*);
@@ -191,25 +185,8 @@ private:
 	IArchNetwork*		m_net;
 	IArchSleep*			m_sleep;
 	IArchString*		m_string;
-	IArchSystem*		m_system;
 	IArchTaskBar*		m_taskbar;
 	IArchTime*			m_time;
-};
-
-//! Convenience object to lock/unlock an arch mutex
-class CArchMutexLock {
-public:
-	CArchMutexLock(CArchMutex mutex) : m_mutex(mutex)
-	{
-		ARCH->lockMutex(m_mutex);
-	}
-	~CArchMutexLock()
-	{
-		ARCH->unlockMutex(m_mutex);
-	}
-
-private:
-	CArchMutex			m_mutex;
 };
 
 #endif

@@ -18,9 +18,6 @@
 #include "IListenSocket.h"
 #include "IArchNetwork.h"
 
-class CMutex;
-class ISocketMultiplexerJob;
-
 //! TCP listen socket
 /*!
 A listen socket using TCP.
@@ -33,19 +30,12 @@ public:
 	// ISocket overrides
 	virtual void		bind(const CNetworkAddress&);
 	virtual void		close();
-	virtual void*		getEventTarget() const;
 
 	// IListenSocket overrides
 	virtual IDataSocket*	accept();
 
 private:
-	ISocketMultiplexerJob*
-						serviceListening(ISocketMultiplexerJob*,
-							bool, bool, bool);
-
-private:
 	CArchSocket			m_socket;
-	CMutex*				m_mutex;
 };
 
 #endif

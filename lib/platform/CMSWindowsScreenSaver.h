@@ -16,7 +16,6 @@
 #define CMSWINDOWSSCREENSAVER_H
 
 #include "IScreenSaver.h"
-#include "CString.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -66,16 +65,11 @@ private:
 	void				watchDesktopThread(void*);
 	void				watchProcessThread(void*);
 
-	void				setSecure(bool secure, bool saveSecureAsInt);
-	bool				isSecure(bool* wasSecureAnInt) const;
-
 private:
 	bool				m_is95Family;
 	bool				m_is95;
 	bool				m_isNT;
 	BOOL				m_wasEnabled;
-	bool				m_wasSecure;
-	bool				m_wasSecureAnInt;
 
 	HANDLE				m_process;
 	CThread*			m_watch;
@@ -83,10 +77,6 @@ private:
 	UINT				m_msg;
 	WPARAM				m_wParam;
 	LPARAM				m_lParam;
-
-	// checkActive state.  true if the screen saver is being watched
-	// for deactivation (and is therefore active).
-	bool				m_active;
 };
 
 #endif

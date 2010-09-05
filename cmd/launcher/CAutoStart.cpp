@@ -122,12 +122,7 @@ CAutoStart::update()
 	// update messages
 	CString msg, label;
 	if (canInstallSystem) {
-		if (canInstallUser) {
-			msg = getString(IDS_AUTOSTART_PERMISSION_ALL);
-		}
-		else {
-			msg = getString(IDS_AUTOSTART_PERMISSION_SYSTEM);
-		}
+		msg = getString(IDS_AUTOSTART_PERMISSION_SYSTEM);
 	}
 	else if (canInstallUser) {
 		msg = getString(IDS_AUTOSTART_PERMISSION_USER);
@@ -203,8 +198,7 @@ CAutoStart::onInstall(bool allUsers)
 	try {
 		ARCH->installDaemon(m_name.c_str(),
 					m_isServer ? SERVER_DAEMON_INFO : CLIENT_DAEMON_INFO,
-					appPath.c_str(), m_cmdLine.c_str(),
-					NULL, allUsers);
+					appPath.c_str(), m_cmdLine.c_str(), allUsers);
 		askOkay(m_hwnd, getString(IDS_INSTALL_TITLE),
 								getString(allUsers ?
 									IDS_INSTALLED_SYSTEM :

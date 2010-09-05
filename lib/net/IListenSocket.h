@@ -31,32 +31,18 @@ public:
 
 	//! Accept connection
 	/*!
-	Accept a connection, returning a socket representing the full-duplex
-	data stream.  Returns NULL if no socket is waiting to be accepted.
-	This is only valid after a call to \c bind().
+	Wait for and accept a connection, returning a socket representing
+	the full-duplex data stream.
+
+	(cancellation point)
 	*/
 	virtual IDataSocket*	accept() = 0;
-
-	//@}
-	//! @name accessors
-	//@{
-
-	//! Get connecting event type
-	/*!
-	Returns the socket connecting event type.  A socket sends this
-	event when a remote connection is waiting to be accepted.
-	*/
-	static CEvent::Type	getConnectingEvent();
 
 	//@}
 
 	// ISocket overrides
 	virtual void		bind(const CNetworkAddress&) = 0;
 	virtual void		close() = 0;
-	virtual void*		getEventTarget() const = 0;
-
-private:
-	static CEvent::Type	s_connectingEvent;
 };
 
 #endif

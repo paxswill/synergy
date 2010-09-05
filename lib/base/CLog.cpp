@@ -54,6 +54,16 @@ static const int		g_prioritySuffixLength = 2;
 static const int		g_priorityPad = g_maxPriorityLength +
 										g_prioritySuffixLength;
 
+//! Convenience object to lock/unlock a mutex
+class CLogLock {
+public:
+	CLogLock(CArchMutex mutex) : m_mutex(mutex) { ARCH->lockMutex(m_mutex); }
+	~CLogLock() { ARCH->unlockMutex(m_mutex); }
+
+private:
+	CArchMutex			m_mutex;
+};
+
 
 //
 // CLog
@@ -188,7 +198,7 @@ CLog::insert(ILogOutputter* outputter, bool alwaysAtHead)
 	assert(outputter               != NULL);
 	assert(outputter->getNewline() != NULL);
 
-	CArchMutexLock lock(m_mutex);
+	CLogLock lock(m_mutex);
 	if (alwaysAtHead) {
 		m_alwaysOutputters.push_front(outputter);
 	}
@@ -204,7 +214,7 @@ CLog::insert(ILogOutputter* outputter, bool alwaysAtHead)
 void
 CLog::remove(ILogOutputter* outputter)
 {
-	CArchMutexLock lock(m_mutex);
+	CLogLock lock(m_mutex);
 	m_outputters.remove(outputter);
 	m_alwaysOutputters.remove(outputter);
 }
@@ -212,7 +222,7 @@ CLog::remove(ILogOutputter* outputter)
 void
 CLog::pop_front(bool alwaysAtHead)
 {
-	CArchMutexLock lock(m_mutex);
+	CLogLock lock(m_mutex);
 	COutputterList* list = alwaysAtHead ? &m_alwaysOutputters : &m_outputters;
 	if (!list->empty()) {
 		delete list->front();
@@ -238,14 +248,14 @@ CLog::setFilter(const char* maxPriority)
 void
 CLog::setFilter(int maxPriority)
 {
-	CArchMutexLock lock(m_mutex);
+	CLogLock lock(m_mutex);
 	m_maxPriority = maxPriority;
 }
 
 int
 CLog::getFilter() const
 {
-	CArchMutexLock lock(m_mutex);
+	CLogLock lock(m_mutex);
 	return m_maxPriority;
 }
 
@@ -265,11 +275,8 @@ CLog::output(int priority, char* msg) const
 		msg[g_maxPriorityLength + 1] = ' ';
 	}
 
-	// find end of message
-	char* end = msg + g_priorityPad + strlen(msg + g_priorityPad);
-
 	// write to each outputter
-	CArchMutexLock lock(m_mutex);
+	CLogLock lock(m_mutex);
 	for (COutputterList::const_iterator index  = m_alwaysOutputters.begin();
 										index != m_alwaysOutputters.end();
 										++index) {
@@ -277,7 +284,7 @@ CLog::output(int priority, char* msg) const
 		ILogOutputter* outputter = *index;
 		
 		// put an appropriate newline at the end
-		strcpy(end, outputter->getNewline());
+		strcat(msg + g_priorityPad, outputter->getNewline());
 
 		// open the outputter
 		outputter->open(kApplication);
@@ -292,7 +299,7 @@ CLog::output(int priority, char* msg) const
 		ILogOutputter* outputter = *index;
 		
 		// put an appropriate newline at the end
-		strcpy(end, outputter->getNewline());
+		strcat(msg + g_priorityPad, outputter->getNewline());
 
 		// open the outputter
 		outputter->open(kApplication);

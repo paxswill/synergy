@@ -15,59 +15,87 @@
 #ifndef CSERVERPROXY_H
 #define CSERVERPROXY_H
 
-#include "ClipboardTypes.h"
+#include "IScreenReceiver.h"
 #include "KeyTypes.h"
-#include "CEvent.h"
+#include "CMutex.h"
 
-class CClient;
-class CClientInfo;
-class CEventQueueTimer;
-class IClipboard;
-class IStream;
+class IClient;
+class IInputStream;
+class IOutputStream;
 
 //! Proxy for server
 /*!
 This class acts a proxy for the server, converting calls into messages
 to the server and messages from the server to calls on the client.
 */
-class CServerProxy {
+class CServerProxy : public IScreenReceiver {
 public:
-	/*!
-	Process messages from the server on \p stream and forward to
-	\p client.
+	/*! \c adoptedInput is the stream from the server and
+	\c adoptedOutput is the stream to the server.  This object
+	takes ownership of both and destroys them in the d'tor.
+	Messages from the server are converted to calls on \c client.
 	*/
-	CServerProxy(CClient* client, IStream* stream);
+	CServerProxy(IClient* client,
+							IInputStream* adoptedInput,
+							IOutputStream* adoptedOutput);
 	~CServerProxy();
 
 	//! @name manipulators
 	//@{
 
-	void				onInfoChanged();
-	bool				onGrabClipboard(ClipboardID);
-	void				onClipboardChanged(ClipboardID, const IClipboard*);
+	//! Run event loop
+	/*!
+	Run the event loop and return when the server disconnects or
+	requests the client to disconnect.  Return true iff the server
+	didn't reject our connection.
+
+	(cancellation point)
+	*/
+	bool				mainLoop();
+
+	//@}
+	//! @name accessors
+	//@{
+
+	//! Get client
+	/*!
+	Returns the client passed to the c'tor.
+	*/
+	IClient*			getClient() const;
+
+	//! Get input stream
+	/*!
+	Return the input stream passed to the c'tor.
+	*/
+	IInputStream*		getInputStream() const;
+
+	//! Get output stream
+	/*!
+	Return the output stream passed to the c'tor.
+	*/
+	IOutputStream*		getOutputStream() const;
 
 	//@}
 
-protected:
-	enum EResult { kOkay, kUnknown, kDisconnect };
-	EResult				parseHandshakeMessage(const UInt8* code);
-	EResult				parseMessage(const UInt8* code);
+	// IScreenReceiver overrides
+	virtual void		onError();
+	virtual void		onInfoChanged(const CClientInfo&);
+	virtual bool		onGrabClipboard(ClipboardID);
+	virtual void		onClipboardChanged(ClipboardID, const CString& data);
 
 private:
+
+	// get the client name (from the client)
+	CString				getName() const;
+
 	// if compressing mouse motion then send the last motion now
 	void				flushCompressedMouse();
 
 	void				sendInfo(const CClientInfo&);
 
-	void				installHeartBeat(double);
-
 	// modifier key translation
 	KeyID				translateKey(KeyID) const;
 	KeyModifierMask		translateModifierMask(KeyModifierMask) const;
-
-	// event handlers
-	void				handleData(const CEvent&, void*);
-	void				handleHeartBeat(const CEvent&, void*);
 
 	// message handlers
 	void				enter();
@@ -80,7 +108,6 @@ private:
 	void				mouseDown();
 	void				mouseUp();
 	void				mouseMove();
-	void				mouseRelativeMove();
 	void				mouseWheel();
 	void				screensaver();
 	void				resetOptions();
@@ -89,25 +116,21 @@ private:
 	void				infoAcknowledgment();
 
 private:
-	typedef EResult (CServerProxy::*MessageParser)(const UInt8*);
+	CMutex				m_mutex;
 
-	CClient*			m_client;
-	IStream*			m_stream;
-	CEventQueueTimer*	m_timer;
+	IClient*			m_client;
+	IInputStream*		m_input;
+	IOutputStream*		m_output;
 
 	UInt32				m_seqNum;
 
 	bool				m_compressMouse;
-	bool				m_compressMouseRelative;
 	SInt32				m_xMouse, m_yMouse;
-	SInt32				m_dxMouse, m_dyMouse;
 
 	bool				m_ignoreMouse;
 
 	KeyModifierID		m_modifierTranslationTable[kKeyModifierIDLast];
 	double				m_heartRate;
-
-	MessageParser		m_parser;
 };
 
 #endif

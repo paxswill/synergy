@@ -15,7 +15,7 @@
 #include "CClientTaskBarReceiver.h"
 #include "CClient.h"
 #include "CLock.h"
-#include "IEventQueue.h"
+#include "TMethodJob.h"
 #include "CArch.h"
 
 //
@@ -23,84 +23,83 @@
 //
 
 CClientTaskBarReceiver::CClientTaskBarReceiver() :
-	m_state(kNotRunning)
+	m_quit(NULL),
+	m_state(kNotRunning),
+	m_client(NULL)
 {
-	// do nothing
+	// create a job for getting notification when the client's
+	// status changes.
+	m_job = new TMethodJob<CClientTaskBarReceiver>(this,
+							&CClientTaskBarReceiver::statusChanged, NULL);
 }
 
 CClientTaskBarReceiver::~CClientTaskBarReceiver()
 {
-	// do nothing
+	if (m_client != NULL) {
+		m_client->removeStatusJob(m_job);
+	}
+	delete m_job;
+	delete m_quit;
 }
 
 void
-CClientTaskBarReceiver::updateStatus(CClient* client, const CString& errorMsg)
+CClientTaskBarReceiver::setClient(CClient* client)
 {
 	{
-		// update our status
-		m_errorMessage = errorMsg;
-		if (client == NULL) {
-			if (m_errorMessage.empty()) {
-				m_state = kNotRunning;
+		CLock lock(&m_mutex);
+		if (m_client != client) {
+			if (m_client != NULL) {
+				m_client->removeStatusJob(m_job);
 			}
-			else {
-				m_state = kNotWorking;
-			}
-		}
-		else {
-			if (client->isConnected()) {
-				m_state = kConnected;
-			}
-			else if (client->isConnecting()) {
-				m_state = kConnecting;
-			}
-			else {
-				m_state = kNotConnected;
+			m_client = client;
+			if (m_client != NULL) {
+				m_client->addStatusJob(m_job);
 			}
 		}
-
-		// let subclasses have a go
-		onStatusChanged(client);
 	}
-
-	// tell task bar
 	ARCH->updateReceiver(this);
 }
 
+void
+CClientTaskBarReceiver::setState(EState state)
+{
+	{
+		CLock lock(&m_mutex);
+		m_state = state;
+	}
+	ARCH->updateReceiver(this);
+}
+
+void
+CClientTaskBarReceiver::setQuitJob(IJob* job)
+{
+	CLock lock(&m_mutex);
+	delete m_quit;
+	m_quit = job;
+}
+
 CClientTaskBarReceiver::EState
-CClientTaskBarReceiver::getStatus() const
+CClientTaskBarReceiver::getState() const
 {
 	return m_state;
 }
 
-const CString&
-CClientTaskBarReceiver::getErrorMessage() const
+CClient*
+CClientTaskBarReceiver::getClient() const
 {
-	return m_errorMessage;
-}
-
-void
-CClientTaskBarReceiver::quit()
-{
-	EVENTQUEUE->addEvent(CEvent(CEvent::kQuit));
-}
-
-void
-CClientTaskBarReceiver::onStatusChanged(CClient*)
-{
-	// do nothing
+	return m_client;
 }
 
 void
 CClientTaskBarReceiver::lock() const
 {
-	// do nothing
+	m_mutex.lock();
 }
 
 void
 CClientTaskBarReceiver::unlock() const
 {
-	// do nothing
+	m_mutex.unlock();
 }
 
 std::string
@@ -114,10 +113,7 @@ CClientTaskBarReceiver::getToolTip() const
 		return CString("Synergy:  ") + m_errorMessage;
 
 	case kNotConnected:
-		return CString("Synergy:  Not connected:  ") + m_errorMessage;
-
-	case kConnecting:
-		return "Synergy:  Connecting...";
+		return "Synergy:  Waiting for clients";
 
 	case kConnected:
 		return "Synergy:  Connected";
@@ -125,4 +121,43 @@ CClientTaskBarReceiver::getToolTip() const
 	default:
 		return "";
 	}
+}
+
+void
+CClientTaskBarReceiver::quit()
+{
+	if (m_quit != NULL) {
+		m_quit->run();
+	}
+}
+
+void
+CClientTaskBarReceiver::onStatusChanged()
+{
+	// do nothing
+}
+
+void
+CClientTaskBarReceiver::statusChanged(void*)
+{
+	// update our status
+	switch (m_client->getStatus(&m_errorMessage)) {
+	case CClient::kNotRunning:
+		setState(kNotRunning);
+		break;
+
+	case CClient::kRunning:
+		setState(kConnected);
+		break;
+
+	case CClient::kError:
+		setState(kNotWorking);
+		break;
+
+	default:
+		break;
+	}
+
+	// let subclasses have a go
+	onStatusChanged();
 }

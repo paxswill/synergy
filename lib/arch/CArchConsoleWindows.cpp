@@ -29,13 +29,6 @@ CArchConsoleWindows::CArchConsoleWindows() :
 	s_thread = ARCH->newCurrentThread();
 
 	m_mutex = ARCH->newMutex();
-
-	// dummy write to stderr to create locks in stdio from the main
-	// thread.  if we open the console from another thread then we
-	// can deadlock in stdio when trying to write from a 3rd thread.
-	// writes to stderr without a console don't go anywhere so the
-	// user won't notice this.
-	fprintf(stderr, "\n");
 }
 
 CArchConsoleWindows::~CArchConsoleWindows()
@@ -108,20 +101,9 @@ CArchConsoleWindows::getNewlineForConsole()
 }
 
 BOOL WINAPI
-CArchConsoleWindows::signalHandler(DWORD ctrlType)
+CArchConsoleWindows::signalHandler(DWORD)
 {
-	// terminate app and skip remaining handlers
-	switch (ctrlType) {
-	case CTRL_C_EVENT:
-		ARCH->raiseSignal(CArch::kINTERRUPT);
-		return TRUE;
-
-	case CTRL_BREAK_EVENT:
-		ARCH->raiseSignal(CArch::kTERMINATE);
-		return TRUE;
-
-	default:
-		ARCH->raiseSignal(CArch::kINTERRUPT);
-		return TRUE;
-	}
+	// terminate thread and skip remaining handlers
+	ARCH->cancelThread(s_thread);
+	return TRUE;
 }

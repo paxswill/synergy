@@ -16,7 +16,7 @@
 #include <windows.h>
 #include <shlobj.h>
 #include <tchar.h>
-#include <string.h>
+#include <cstring>
 
 //
 // CArchFileWindows

@@ -14,7 +14,7 @@
 
 #include "stdpre.h"
 
-#if HAVE_SSTREAM || !defined(__GNUC__) || (__GNUC__ >= 3)
+#if defined(HAVE_SSTREAM) || !defined(__GNUC__) || (__GNUC__ >= 3)
 
 #include <sstream>
 

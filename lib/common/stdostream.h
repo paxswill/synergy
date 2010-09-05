@@ -13,7 +13,7 @@
  */
 
 #include "stdpre.h"
-#if HAVE_OSTREAM
+#if defined(HAVE_OSTREAM)
 #include <ostream>
 #else
 #include <iostream>

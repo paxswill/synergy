@@ -84,7 +84,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "installer"=".\DIST\NULLSOFT\installer.dsp" - Package Owner=<4>
+Project: "http"=".\lib\HTTP\http.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -124,6 +124,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name base
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name http
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name io
@@ -277,6 +280,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name base
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name http
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name io

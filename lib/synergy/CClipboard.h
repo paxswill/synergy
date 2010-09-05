@@ -47,6 +47,25 @@ public:
 	*/
 	CString				marshall() const;
 
+	//! Copy clipboard
+	/*!
+	Transfers all the data in one clipboard to another.  The
+	clipboards can be of any concrete clipboard type (and
+	they don't have to be the same type).  This also sets
+	the destination clipboard's timestamp to source clipboard's
+	timestamp.  Returns true iff the copy succeeded.
+	*/
+	static bool			copy(IClipboard* dst, const IClipboard* src);
+
+	//! Copy clipboard
+	/*!
+	Transfers all the data in one clipboard to another.  The
+	clipboards can be of any concrete clipboard type (and they
+	don't have to be the same type).  This also sets the
+	timestamp to \c time.  Returns true iff the copy succeeded.
+	*/
+	static bool			copy(IClipboard* dst, const IClipboard* src, Time);
+
 	//@}
 
 	// IClipboard overrides
@@ -57,6 +76,10 @@ public:
 	virtual Time		getTime() const;
 	virtual bool		has(EFormat) const;
 	virtual CString		get(EFormat) const;
+
+private:
+	UInt32				readUInt32(const char*) const;
+	void				writeUInt32(CString*, UInt32) const;
 
 private:
 	mutable bool		m_open;

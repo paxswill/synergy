@@ -19,21 +19,21 @@
 
 // set version macro if not set yet
 #if !defined(VERSION)
-#	define VERSION "1.1.10"
+#	define VERSION "1.0.14"
 #endif
 
 // important strings
-extern const char* kApplication;
-extern const char* kCopyright;
-extern const char* kContact;
-extern const char* kWebsite;
+static const char* kApplication     = "synergy";
+static const char* kCopyright       = "Copyright (C) 2002 Chris Schoeneman";
+static const char* kContact         = "Chris Schoeneman, crs23@bigfoot.com";
+static const char* kWebsite         = "http://synergy2.sourceforge.net/";
 
 // build version.  follows linux kernel style:  an even minor number implies
 // a release version, odd implies development version.
-extern const char* kVersion;
+static const char* kVersion			= VERSION;
 
 // application version
-extern const char* kAppVersion;
+static const char* kAppVersion      = "synergy " VERSION;
 
 // exit codes
 static const int kExitSuccess		= 0;	// successful completion

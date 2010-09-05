@@ -23,25 +23,22 @@
 #undef ARCH_NETWORK
 #undef ARCH_SLEEP
 #undef ARCH_STRING
-#undef ARCH_SYSTEM
 #undef ARCH_TASKBAR
 #undef ARCH_TIME
 
 // include appropriate architecture implementation
-#if SYSAPI_WIN32
+#if WINDOWS_LIKE
 #	include "CArchConsoleWindows.h"
 #	include "CArchDaemonWindows.h"
 #	include "CArchFileWindows.h"
 #	include "CArchLogWindows.h"
-#	include "CArchMiscWindows.h"
 #	include "CArchMultithreadWindows.h"
 #	include "CArchNetworkWinsock.h"
 #	include "CArchSleepWindows.h"
 #	include "CArchStringWindows.h"
-#	include "CArchSystemWindows.h"
 #	include "CArchTaskBarWindows.h"
 #	include "CArchTimeWindows.h"
-#elif SYSAPI_UNIX
+#elif UNIX_LIKE
 #	include "CArchConsoleUnix.h"
 #	include "CArchDaemonUnix.h"
 #	include "CArchFileUnix.h"
@@ -52,7 +49,6 @@
 #	include "CArchNetworkBSD.h"
 #	include "CArchSleepUnix.h"
 #	include "CArchStringUnix.h"
-#	include "CArchSystemUnix.h"
 #	include "CArchTaskBarXWindows.h"
 #	include "CArchTimeUnix.h"
 #endif
@@ -89,10 +85,6 @@
 #	error unsupported platform for string
 #endif
 
-#if !defined(ARCH_SYSTEM)
-#	error unsupported platform for system
-#endif
-
 #if !defined(ARCH_TASKBAR)
 #	error unsupported platform for taskbar
 #endif
@@ -115,7 +107,6 @@ CArch::CArch(ARCH_ARGS* args)
 
 	// create architecture implementation objects
 	m_mt      = new ARCH_MULTITHREAD;
-	m_system  = new ARCH_SYSTEM;
 	m_file    = new ARCH_FILE;
 	m_log     = new ARCH_LOG;
 	m_net     = new ARCH_NETWORK;
@@ -125,10 +116,6 @@ CArch::CArch(ARCH_ARGS* args)
 	m_console = new ARCH_CONSOLE;
 	m_daemon  = new ARCH_DAEMON;
 	m_taskbar = new ARCH_TASKBAR(args);
-
-#if SYSAPI_WIN32
-	CArchMiscWindows::init();
-#endif
 }
 
 CArch::~CArch()
@@ -143,7 +130,6 @@ CArch::~CArch()
 	delete m_net;
 	delete m_log;
 	delete m_file;
-	delete m_system;
 	delete m_mt;
 
 	// no instance
@@ -187,11 +173,9 @@ CArch::installDaemon(const char* name,
 				const char* description,
 				const char* pathname,
 				const char* commandLine,
-				const char* dependencies,
 				bool allUsers)
 {
-	m_daemon->installDaemon(name, description, pathname,
-							commandLine, dependencies, allUsers);
+	m_daemon->installDaemon(name, description, pathname, commandLine, allUsers);
 }
 
 void
@@ -362,6 +346,12 @@ CArch::wait(CArchThread thread, double timeout)
 	return m_mt->wait(thread, timeout);
 }
 
+IArchMultithread::EWaitResult
+CArch::waitForEvent(CArchThread thread, double timeout)
+{
+	return m_mt->waitForEvent(thread, timeout);
+}
+
 bool
 CArch::isSameThread(CArchThread thread1, CArchThread thread2)
 {
@@ -384,18 +374,6 @@ IArchMultithread::ThreadID
 CArch::getIDOfThread(CArchThread thread)
 {
 	return m_mt->getIDOfThread(thread);
-}
-
-void
-CArch::setSignalHandler(ESignal signal, SignalFunc func, void* userData)
-{
-	m_mt->setSignalHandler(signal, func, userData);
-}
-
-void
-CArch::raiseSignal(ESignal signal)
-{
-	m_mt->raiseSignal(signal);
 }
 
 CArchSocket
@@ -446,22 +424,16 @@ CArch::acceptSocket(CArchSocket s, CArchNetAddress* addr)
 	return m_net->acceptSocket(s, addr);
 }
 
-bool
+void
 CArch::connectSocket(CArchSocket s, CArchNetAddress name)
 {
-	return m_net->connectSocket(s, name);
+	m_net->connectSocket(s, name);
 }
 
 int
 CArch::pollSocket(CPollEntry pe[], int num, double timeout)
 {
 	return m_net->pollSocket(pe, num, timeout);
-}
-
-void
-CArch::unblockPollSocket(CArchThread thread)
-{
-	m_net->unblockPollSocket(thread);
 }
 
 size_t
@@ -480,6 +452,12 @@ void
 CArch::throwErrorOnSocket(CArchSocket s)
 {
 	m_net->throwErrorOnSocket(s);
+}
+
+bool
+CArch::setBlockingOnSocket(CArchSocket s, bool blocking)
+{
+	return m_net->setBlockingOnSocket(s, blocking);
 }
 
 bool
@@ -554,12 +532,6 @@ CArch::isAnyAddr(CArchNetAddress addr)
 	return m_net->isAnyAddr(addr);
 }
 
-bool
-CArch::isEqualAddr(CArchNetAddress a, CArchNetAddress b)
-{
-	return m_net->isEqualAddr(a, b);
-}
-
 void
 CArch::sleep(double timeout)
 {
@@ -572,28 +544,46 @@ CArch::vsnprintf(char* str, int size, const char* fmt, va_list ap)
 	return m_string->vsnprintf(str, size, fmt, ap);
 }
 
-int
-CArch::convStringMBToWC(wchar_t* dst, const char* src, UInt32 n, bool* errors)
+CArchMBState
+CArch::newMBState()
 {
-	return m_string->convStringMBToWC(dst, src, n, errors);
+	return m_string->newMBState();
+}
+
+void
+CArch::closeMBState(CArchMBState state)
+{
+	m_string->closeMBState(state);
+}
+
+void
+CArch::initMBState(CArchMBState state)
+{
+	m_string->initMBState(state);
+}
+
+bool
+CArch::isInitMBState(CArchMBState state)
+{
+	return m_string->isInitMBState(state);
 }
 
 int
-CArch::convStringWCToMB(char* dst, const wchar_t* src, UInt32 n, bool* errors)
+CArch::convMBToWC(wchar_t* dst, const char* src, int n, CArchMBState state)
 {
-	return m_string->convStringWCToMB(dst, src, n, errors);
+	return m_string->convMBToWC(dst, src, n, state);
+}
+
+int
+CArch::convWCToMB(char* dst, wchar_t src, CArchMBState state)
+{
+	return m_string->convWCToMB(dst, src, state);
 }
 
 IArchString::EWideCharEncoding
 CArch::getWideCharEncoding()
 {
 	return m_string->getWideCharEncoding();
-}
-
-std::string
-CArch::getOSName() const
-{
-	return m_system->getOSName();
 }
 
 void

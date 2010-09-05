@@ -34,14 +34,3 @@ XIOEndOfStream::getWhat() const throw()
 {
 	return format("XIOEndOfStream", "reached end of stream");
 }
-
-
-//
-// XIOWouldBlock
-//
-
-CString
-XIOWouldBlock::getWhat() const throw()
-{
-	return format("XIOWouldBlock", "stream operation would block");
-}

@@ -20,6 +20,9 @@
 #include <fcntl.h>
 #include <errno.h>
 
+// we derive from CArchDaemonNone
+#include "CArchDaemonNone.cpp"
+
 //
 // CArchDaemonUnix
 //
