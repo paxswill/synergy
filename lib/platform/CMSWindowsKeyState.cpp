@@ -854,6 +854,14 @@ CMSWindowsKeyState::pollActiveGroup() const
 	// get keyboard layout for the thread
 	HKL hkl            = GetKeyboardLayout(targetThread);
 
+	if (!hkl) {
+		// GetKeyboardLayout failed. Maybe targetWindow is a console window.
+		// We're getting the keyboard layout of the desktop instead.
+		targetWindow = GetDesktopWindow();
+		targetThread = GetWindowThreadProcessId(targetWindow, NULL);
+		hkl          = GetKeyboardLayout(targetThread);
+	}
+
 	// get group
 	GroupMap::const_iterator i = m_groupMap.find(hkl);
 	if (i == m_groupMap.end()) {
@@ -868,7 +876,10 @@ void
 CMSWindowsKeyState::pollPressedKeys(KeyButtonSet& pressedKeys) const
 {
 	BYTE keyState[256];
-	GetKeyboardState(keyState);
+	if (!GetKeyboardState(keyState)) {
+		LOG((CLOG_ERR "GetKeyboardState returned false on pollPressedKeys"));
+		return;
+	}
 	for (KeyButton i = 1; i < 256; ++i) {
 		if ((keyState[i] & 0x80) != 0) {
 			pressedKeys.insert(i);
@@ -1102,7 +1113,9 @@ CMSWindowsKeyState::getKeyMap(CKeyMap& keyMap)
 					KeyButton button = static_cast<KeyButton>(i & 0xffu);
 					for (size_t j = 0; j < s_numCombinations; ++j) {
 						for (size_t k = 0; k < s_numModifiers; ++k) {
-							if ((j & (1 << k)) != 0) {
+							//if ((j & (1 << k)) != 0) {
+							// http://msdn.microsoft.com/en-us/library/ke55d167.aspx
+							if ((j & (1i64 << k)) != 0) {
 								keys[modifiers[k].m_vk1] = modifiers[k].m_state;
 								keys[modifiers[k].m_vk2] = modifiers[k].m_state;
 							}
@@ -1125,7 +1138,9 @@ CMSWindowsKeyState::getKeyMap(CKeyMap& keyMap)
 						item.m_sensitive = 0;
 						for (size_t k = 0; k < s_numModifiers; ++k) {
 							for (size_t j = 0; j < s_numCombinations; ++j) {
-								if (id[j] != id[j ^ (1u << k)]) {
+								//if (id[j] != id[j ^ (1u << k)]) {
+								// http://msdn.microsoft.com/en-us/library/ke55d167.aspx
+								if (id[j] != id[j ^ (1ui64 << k)]) {
 									item.m_sensitive |= modifiers[k].m_mask;
 									break;
 								}
@@ -1139,7 +1154,7 @@ CMSWindowsKeyState::getKeyMap(CKeyMap& keyMap)
 							item.m_id       = id[j];
 							item.m_required = 0;
 							for (size_t k = 0; k < s_numModifiers; ++k) {
-								if ((j & (1 << k)) != 0) {
+								if ((j & (1i64 << k)) != 0) {
 									item.m_required |= modifiers[k].m_mask;
 								}
 							}

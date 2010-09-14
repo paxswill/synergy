@@ -19,7 +19,7 @@
 #include "XSocket.h"
 #include "stdistream.h"
 #include "stdostream.h"
-#include <stdlib.h>
+#include <cstdlib>
 
 //
 // CConfig
@@ -87,11 +87,11 @@ CConfig::renameScreen(const CString& oldName,
 
 	// update alias targets
 	if (CStringUtil::CaselessCmp::equal(oldName, oldCanonical)) {
-		for (CNameMap::iterator index = m_nameToCanonicalName.begin();
-							index != m_nameToCanonicalName.end(); ++index) {
+		for (CNameMap::iterator iter = m_nameToCanonicalName.begin();
+							iter != m_nameToCanonicalName.end(); ++iter) {
 			if (CStringUtil::CaselessCmp::equal(
-							index->second, oldCanonical)) {
-				index->second = newName;
+							iter->second, oldCanonical)) {
+				iter->second = newName;
 			}
 		}
 	}
@@ -119,10 +119,10 @@ CConfig::removeScreen(const CString& name)
 	}
 
 	// remove aliases (and canonical name)
-	for (CNameMap::iterator index = m_nameToCanonicalName.begin();
-								index != m_nameToCanonicalName.end(); ) {
-		if (index->second == canonical) {
-			m_nameToCanonicalName.erase(index++);
+	for (CNameMap::iterator iter = m_nameToCanonicalName.begin();
+								iter != m_nameToCanonicalName.end(); ) {
+		if (iter->second == canonical) {
+			m_nameToCanonicalName.erase(iter++);
 		}
 		else {
 			++index;
@@ -891,6 +891,10 @@ CConfig::readSectionScreens(CConfigReadContext& s)
 				addOption(screen, kOptionScreenSwitchCornerSize,
 					s.parseInt(value));
 			}
+			else if (name == "preserveFocus") {
+				addOption(screen, kOptionScreenPreserveFocus,
+					s.parseBoolean(value));
+			}
 			else {
 				// unknown argument
 				throw XConfigRead(s, "unknown argument \"%{1}\"", name);
@@ -1332,6 +1336,9 @@ CConfig::getOptionName(OptionID id)
 	if (id == kOptionWin32KeepForeground) {
 		return "win32KeepForeground";
 	}
+	if (id == kOptionScreenPreserveFocus) {
+		return "preserveFocus";
+	}
 	return NULL;
 }
 
@@ -1344,7 +1351,8 @@ CConfig::getOptionValue(OptionID id, OptionValue value)
 		id == kOptionScreenSaverSync ||
 		id == kOptionXTestXineramaUnaware ||
 		id == kOptionRelativeMouseMoves ||
-		id == kOptionWin32KeepForeground) {
+		id == kOptionWin32KeepForeground ||
+		id == kOptionScreenPreserveFocus) {
 		return (value != 0) ? "true" : "false";
 	}
 	if (id == kOptionModifierMapForShift ||

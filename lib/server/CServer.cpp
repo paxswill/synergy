@@ -28,7 +28,8 @@
 #include "CLog.h"
 #include "TMethodEventJob.h"
 #include "CArch.h"
-#include <string.h>
+#include <cstring>
+#include <cstdlib>
 
 //
 // CServer
@@ -313,7 +314,7 @@ CServer::disconnect()
 UInt32
 CServer::getNumClients() const
 {
-	return m_clients.size();
+	return (SInt32)m_clients.size();
 }
 
 void
@@ -1557,8 +1558,7 @@ CServer::onKeyDown(KeyID id, KeyModifierMask mask, KeyButton button,
 	assert(m_active != NULL);
 
 	// relay
-	if (!m_keyboardBroadcasting ||
-			(screens && IKeyState::CKeyInfo::isDefault(screens))) {
+	if (!m_keyboardBroadcasting && IKeyState::CKeyInfo::isDefault(screens)) {
 		m_active->keyDown(id, mask, button);
 	}
 	else {
@@ -1585,8 +1585,7 @@ CServer::onKeyUp(KeyID id, KeyModifierMask mask, KeyButton button,
 	assert(m_active != NULL);
 
 	// relay
-	if (!m_keyboardBroadcasting ||
-			(screens && IKeyState::CKeyInfo::isDefault(screens))) {
+	if (!m_keyboardBroadcasting && IKeyState::CKeyInfo::isDefault(screens)) {
 		m_active->keyUp(id, mask, button);
 	}
 	else {

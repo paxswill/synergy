@@ -15,8 +15,10 @@
 #include "CKeyState.h"
 #include "IEventQueue.h"
 #include "CLog.h"
-#include <string.h>
+#include <cstring>
 #include <algorithm>
+#include <iterator>
+#include <list>
 
 static const KeyButton kButtonMask = (KeyButton)(IKeyState::kNumButtons - 1);
 

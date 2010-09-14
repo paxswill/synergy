@@ -672,12 +672,12 @@ CArchDaemonWindows::serviceMain(DWORD argc, LPTSTR* argvIn)
 			myArgv.push_back(argv[0]);
 
 			// get pointers
-			for (size_t i = 0; i < args.size(); ++i) {
-				myArgv.push_back(args[i].c_str());
+			for (size_t j = 0; j < args.size(); ++j) {
+				myArgv.push_back(args[j].c_str());
 			}
 
 			// adjust argc/argv
-			argc = myArgv.size();
+			argc = (DWORD)myArgv.size();
 			argv = &myArgv[0];
 		}
 	}

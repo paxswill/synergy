@@ -398,7 +398,7 @@ initMainWindow(HWND hwnd)
 {
 	// append version number to title
 	CString titleFormat = getString(IDS_TITLE);
-	setWindowText(hwnd, CStringUtil::format(titleFormat.c_str(), VERSION));
+	setWindowText(hwnd, CStringUtil::format(titleFormat.c_str(), kApplication, kVersion));
 
 	// load configuration
 	bool configLoaded =
@@ -470,7 +470,7 @@ saveMainWindow(HWND hwnd, SaveMode mode, CString* cmdLineOut = NULL)
 		CArchMiscWindows::setValue(key, "server", getWindowText(child));
 		child = getItem(hwnd, IDC_MAIN_DEBUG);
 		CArchMiscWindows::setValue(key, "debug",
-								SendMessage(child, CB_GETCURSEL, 0, 0));
+								(DWORD)SendMessage(child, CB_GETCURSEL, 0, 0));
 		CArchMiscWindows::setValue(key, "isServer", isClient ? 0 : 1);
 		CArchMiscWindows::closeKey(key);
 	}
@@ -556,8 +556,8 @@ mainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// see if the configuration changed
 			if (isConfigNewer(s_configTime, s_userConfig)) {
-				CString message = getString(IDS_CONFIG_CHANGED);
-				if (askVerify(hwnd, message)) {
+				CString message2 = getString(IDS_CONFIG_CHANGED);
+				if (askVerify(hwnd, message2)) {
 					time_t configTime;
 					bool userConfig;
 					CConfig newConfig;
@@ -567,8 +567,8 @@ mainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 						s_lastConfig  = ARG->m_config;
 					}
 					else {
-						message = getString(IDS_LOAD_FAILED);
-						showError(hwnd, message);
+						message2 = getString(IDS_LOAD_FAILED);
+						showError(hwnd, message2);
 						s_lastConfig = CConfig();
 					}
 				}
@@ -620,9 +620,8 @@ mainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 						CloseHandle(thread);
 					}
 
-					// notify of success
-					askOkay(hwnd, getString(IDS_STARTED_TITLE),
-									getString(IDS_STARTED));
+					// notify of success: now disabled - it's silly to notify a success
+					//askOkay(hwnd, getString(IDS_STARTED_TITLE), getString(IDS_STARTED));
 
 					// quit
 					PostQuitMessage(0);
@@ -751,5 +750,5 @@ WinMain(HINSTANCE instance, HINSTANCE, LPSTR cmdLine, int nCmdShow)
 		}
 	} while (!done);
 
-	return msg.wParam;
+	return (int)msg.wParam;
 }

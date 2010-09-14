@@ -177,7 +177,7 @@ CMSWindowsDesks::resetOptions()
 void
 CMSWindowsDesks::setOptions(const COptionsList& options)
 {
-	for (UInt32 i = 0, n = options.size(); i < n; i += 2) {
+	for (UInt32 i = 0, n = (UInt32)options.size(); i < n; i += 2) {
 		if (options[i] == kOptionWin32KeepForeground) {
 			m_leaveForegroundOption = (options[i + 1] != 0);
 			LOG((CLOG_DEBUG1 "%s the foreground window", m_leaveForegroundOption ? "Don\'t grab" : "Grab"));
@@ -691,6 +691,7 @@ CMSWindowsDesks::deskLeave(CDesk* desk, HKL keyLayout)
 		SetCapture(desk->m_window);
 
 		// warp the mouse to the cursor center
+		LOG((CLOG_DEBUG2 "warping cursor to center: %+d,%+d", m_xCenter, m_yCenter));
 		deskMouseMove(m_xCenter, m_yCenter);
 	}
 }
@@ -758,7 +759,8 @@ CMSWindowsDesks::deskThread(void* vdesk)
 
 				// a window on the primary screen with low-level hooks
 				// should never activate.
-				EnableWindow(desk->m_window, desk->m_lowLevel ? FALSE : TRUE);
+				if (desk->m_window)
+					EnableWindow(desk->m_window, desk->m_lowLevel ? FALSE : TRUE);
 			}
 			break;
 
@@ -774,12 +776,12 @@ CMSWindowsDesks::deskThread(void* vdesk)
 			break;
 
 		case SYNERGY_MSG_FAKE_KEY:
-			keybd_event(HIBYTE(msg.lParam), LOBYTE(msg.lParam), msg.wParam, 0);
+			keybd_event(HIBYTE(msg.lParam), LOBYTE(msg.lParam), (DWORD)msg.wParam, 0);
 			break;
 
 		case SYNERGY_MSG_FAKE_BUTTON:
 			if (msg.wParam != 0) {
-				mouse_event(msg.wParam, 0, 0, msg.lParam, 0);
+				mouse_event((DWORD)msg.wParam, 0, 0, (DWORD)msg.lParam, 0);
 			}
 			break;
 
@@ -796,7 +798,7 @@ CMSWindowsDesks::deskThread(void* vdesk)
 		case SYNERGY_MSG_FAKE_WHEEL:
 			// XXX -- add support for x-axis scrolling
 			if (msg.lParam != 0) {
-				mouse_event(MOUSEEVENTF_WHEEL, 0, 0, msg.lParam, 0);
+				mouse_event(MOUSEEVENTF_WHEEL, 0, 0, (DWORD)msg.lParam, 0);
 			}
 			break;
 

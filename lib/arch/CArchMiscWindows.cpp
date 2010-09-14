@@ -252,7 +252,7 @@ CArchMiscWindows::setValue(HKEY key,
 	assert(name != NULL);
 	RegSetValueEx(key, name, 0, REG_SZ,
 								reinterpret_cast<const BYTE*>(value.c_str()),
-								value.size() + 1);
+								(DWORD)value.size() + 1);
 }
 
 void
@@ -273,7 +273,7 @@ CArchMiscWindows::setValueBinary(HKEY key,
 	assert(name != NULL);
 	RegSetValueEx(key, name, 0, REG_BINARY,
 								reinterpret_cast<const BYTE*>(value.data()),
-								value.size());
+								(DWORD)value.size());
 }
 
 std::string
@@ -413,4 +413,27 @@ CArchMiscWindows::dummySetThreadExecutionState(DWORD)
 {
 	// do nothing
 	return 0;
+}
+
+void
+CArchMiscWindows::wakeupDisplay()
+{
+	// We can't use ::setThreadExecutionState here because it sets
+	// ES_CONTINUOUS, which we don't want.
+
+	if (s_stes == NULL) {
+		HINSTANCE kernel = LoadLibrary("kernel32.dll");
+		if (kernel != NULL) {
+			s_stes = reinterpret_cast<STES_t>(GetProcAddress(kernel,
+							"SetThreadExecutionState"));
+		}
+		if (s_stes == NULL) {
+			s_stes = &CArchMiscWindows::dummySetThreadExecutionState;
+		}
+	}
+
+	s_stes(ES_DISPLAY_REQUIRED);
+
+	// restore the original execution states
+	setThreadExecutionState(s_busyState);
 }

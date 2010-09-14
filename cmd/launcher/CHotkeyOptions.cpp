@@ -17,6 +17,7 @@
 #include "CConfig.h"
 #include "CHotkeyOptions.h"
 #include "CStringUtil.h"
+#include "CLog.h"
 #include "LaunchUtil.h"
 #include "resource.h"
 
@@ -558,8 +559,8 @@ CHotkeyOptions::CConditionDialog::doModal(HWND parent,
 	else {
 		s_lastGoodCondition = NULL;
 	}
-	int n = DialogBox(s_instance, MAKEINTRESOURCE(IDD_HOTKEY_CONDITION),
-								parent, dlgProc);
+	int n = (int)DialogBox(s_instance, MAKEINTRESOURCE(IDD_HOTKEY_CONDITION),
+								parent, (DLGPROC) dlgProc);
 
 	condition           = s_condition;
 	delete s_lastGoodCondition;
@@ -579,8 +580,8 @@ CHotkeyOptions::CConditionDialog::doInit(HWND hwnd)
 {
 	// subclass edit control
 	HWND child = getItem(hwnd, IDC_HOTKEY_CONDITION_HOTKEY);
-	s_editWndProc = (WNDPROC)GetWindowLong(child, GWL_WNDPROC);
-	SetWindowLong(child, GWL_WNDPROC, (LONG)editProc);
+	s_editWndProc = (WNDPROC)GetWindowLongPtr(child, GWLP_WNDPROC);
+	SetWindowLongPtr(child, GWLP_WNDPROC, (LONG_PTR) editProc);
 
 	// fill control
 	fillHotkey(hwnd);
@@ -671,7 +672,7 @@ CHotkeyOptions::CConditionDialog::onKey(HWND hwnd, WPARAM wParam, LPARAM lParam)
 		// fall through
 
 	default:
-		key = CMSWindowsKeyState::getKeyID(wParam,
+		key = CMSWindowsKeyState::getKeyID((UINT)wParam,
 						static_cast<KeyButton>((lParam & 0x1ff0000u) >> 16));
 		switch (key) {
 		case kKeyNone:
@@ -713,7 +714,10 @@ CHotkeyOptions::CConditionDialog::getChar(WPARAM wParam, LPARAM lParam)
 	BYTE keyState[256];
 	UINT virtualKey = (UINT)wParam;
 	UINT scanCode   = (UINT)((lParam & 0x0ff0000u) >> 16);
-	GetKeyboardState(keyState);
+	if (!GetKeyboardState(keyState)) {
+		LOG((CLOG_WARN "GetKeyboardState failed on CHotkeyOptions::CConditionDialog::getChar"));
+		return kKeyNone;
+	}
 
 	// reset modifier state
 	keyState[VK_SHIFT]    = 0;
@@ -730,7 +734,7 @@ CHotkeyOptions::CConditionDialog::getChar(WPARAM wParam, LPARAM lParam)
 
 	// translate virtual key to character
 	int n;
-	KeyID id;
+	KeyID id = kKeyNone;
 	if (CArchMiscWindows::isWindows95Family()) {
 		// XXX -- how do we get characters not in Latin-1?
 		WORD ascii;
@@ -747,6 +751,10 @@ CHotkeyOptions::CConditionDialog::getChar(WPARAM wParam, LPARAM lParam)
 		ToUnicode_t s_ToUnicode = NULL;
 		if (s_ToUnicode == NULL) {
 			HMODULE userModule = GetModuleHandle("user32.dll");
+			if(userModule == NULL) {
+				LOG((CLOG_ERR "GetModuleHandle(\"user32.dll\") returned NULL"));
+				return kKeyNone;
+			}
 			s_ToUnicode =
 				(ToUnicode_t)GetProcAddress(userModule, "ToUnicode");
 		}
@@ -943,8 +951,8 @@ CHotkeyOptions::CActionDialog::doModal(HWND parent, CConfig* config,
 		s_lastGoodAction = NULL;
 	}
 
-	int n = DialogBox(s_instance, MAKEINTRESOURCE(IDD_HOTKEY_ACTION),
-								parent, dlgProc);
+	int n = (int)DialogBox(s_instance, MAKEINTRESOURCE(IDD_HOTKEY_ACTION),
+								parent, (DLGPROC) dlgProc);
 
 	onActivate       = s_onActivate;
 	action           = s_action;
@@ -960,8 +968,8 @@ CHotkeyOptions::CActionDialog::doInit(HWND hwnd)
 {
 	// subclass edit control
 	HWND child = getItem(hwnd, IDC_HOTKEY_ACTION_HOTKEY);
-	s_editWndProc = (WNDPROC)GetWindowLong(child, GWL_WNDPROC);
-	SetWindowLong(child, GWL_WNDPROC, (LONG)editProc);
+	s_editWndProc = (WNDPROC)GetWindowLongPtr(child, GWLP_WNDPROC);
+	SetWindowLongPtr(child, GWLP_WNDPROC, (LONG_PTR)editProc);
 	setWindowText(getItem(hwnd, IDC_HOTKEY_ACTION_HOTKEY), "");
 	fillHotkey(hwnd);
 
@@ -1069,7 +1077,7 @@ CHotkeyOptions::CActionDialog::doInit(HWND hwnd)
 	}
 	else if (switchToAction != NULL) {
 		child = getItem(hwnd, IDC_HOTKEY_ACTION_SWITCH_TO_LIST);
-		DWORD i = SendMessage(child, CB_FINDSTRINGEXACT, (WPARAM)-1,
+		DWORD i = (DWORD)SendMessage(child, CB_FINDSTRINGEXACT, (WPARAM)-1,
 								(LPARAM)switchToAction->getScreen().c_str());
 		if (i == CB_ERR) {
 			i = 0;
@@ -1241,7 +1249,7 @@ CHotkeyOptions::CActionDialog::onKey(HWND hwnd, WPARAM wParam, LPARAM lParam)
 		// fall through
 
 	default:
-		key = CMSWindowsKeyState::getKeyID(wParam,
+		key = CMSWindowsKeyState::getKeyID((UINT)wParam,
 						static_cast<KeyButton>((lParam & 0x1ff0000u) >> 16));
 		switch (key) {
 		case kKeyNone:
@@ -1355,8 +1363,10 @@ CHotkeyOptions::CActionDialog::getChar(WPARAM wParam, LPARAM lParam)
 	BYTE keyState[256];
 	UINT virtualKey = (UINT)wParam;
 	UINT scanCode   = (UINT)((lParam & 0x0ff0000u) >> 16);
-	GetKeyboardState(keyState);
-
+	if (!GetKeyboardState(keyState)) {
+		LOG((CLOG_WARN "GetKeyboardState failed on CHotkeyOptions::CActionDialog::getChar"));
+		return kKeyNone;
+	}
 	// reset modifier state
 	keyState[VK_SHIFT]    = 0;
 	keyState[VK_LSHIFT]   = 0;
@@ -1389,6 +1399,10 @@ CHotkeyOptions::CActionDialog::getChar(WPARAM wParam, LPARAM lParam)
 		ToUnicode_t s_ToUnicode = NULL;
 		if (s_ToUnicode == NULL) {
 			HMODULE userModule = GetModuleHandle("user32.dll");
+			if(userModule==NULL) {
+				LOG((CLOG_ERR "GetModuleHandle(\"user32.dll\") returned NULL"));
+				return kKeyNone;
+			}
 			s_ToUnicode =
 				(ToUnicode_t)GetProcAddress(userModule, "ToUnicode");
 		}
@@ -1734,7 +1748,7 @@ CHotkeyOptions::CScreensDialog::doModal(HWND parent, CConfig* config,
 	s_config = config;
 	s_action = action;
 	DialogBox(s_instance, MAKEINTRESOURCE(IDD_HOTKEY_SCREENS),
-								parent, dlgProc);
+								parent, (DLGPROC) dlgProc);
 	s_config = NULL;
 	s_action = NULL;
 }

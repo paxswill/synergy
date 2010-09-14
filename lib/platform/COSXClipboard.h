@@ -15,9 +15,9 @@
 #ifndef COSXCLIPBOARD_H
 #define COSXCLIPBOARD_H
 
+#include <Carbon/Carbon.h>
 #include "IClipboard.h"
 #include <vector>
-#include <Carbon/Carbon.h>
 
 class IOSXClipboardConverter;
 
@@ -39,17 +39,16 @@ public:
 	virtual bool		has(EFormat) const;
 	virtual CString		get(EFormat) const;
 
+	bool				synchronize();
 private:
 	void				clearConverters();
-	static ScrapFlavorType
-						getOwnershipFlavor();
 
 private:
 	typedef std::vector<IOSXClipboardConverter*> ConverterList;
 
 	mutable Time		m_time;
 	ConverterList		m_converters;
-	mutable ScrapRef	m_scrap;
+	PasteboardRef		m_pboard;
 };
 
 //! Clipboard format converter interface
@@ -69,7 +68,7 @@ public:
 						getFormat() const = 0;
 
 	//! returns the scrap flavor type that this object converts from/to
-	virtual ScrapFlavorType
+	virtual CFStringRef
 						getOSXFormat() const = 0;
 
 	//! Convert from IClipboard format

@@ -15,11 +15,11 @@
 #ifndef COSXKEYSTATE_H
 #define COSXKEYSTATE_H
 
+#include <Carbon/Carbon.h>
 #include "CKeyState.h"
 #include "stdmap.h"
 #include "stdset.h"
 #include "stdvector.h"
-#include <Carbon/Carbon.h>
 
 //! OS X key state
 /*!
@@ -54,6 +54,12 @@ public:
 	*/
 	KeyModifierMask		mapModifiersFromOSX(UInt32 mask) const;
 
+	//! Convert CG flags-style modifier mask to old-style Carbon
+	/*!
+	Still required in a few places for translation calls.
+	*/
+	KeyModifierMask		mapModifiersToCarbon(UInt32 mask) const;
+	
 	//! Map key event to keys
 	/*!
 	Converts a key event into a sequence of KeyIDs and the shadow modifier
@@ -63,7 +69,7 @@ public:
 	KeyID.
 	*/
 	KeyButton			mapKeyFromEvent(CKeyIDs& ids,
-							KeyModifierMask* maskOut, EventRef event) const;
+							KeyModifierMask* maskOut, CGEventRef event) const;
 
 	//! Map key and mask to native values
 	/*!
@@ -90,7 +96,7 @@ protected:
 
 private:
 	class CKeyResource;
-	typedef std::vector<KeyboardLayoutRef> GroupList;
+	typedef std::vector<TISInputSourceRef> GroupList;
 
 	// Add hard coded special keys to a CKeyMap.
 	void				getKeyMapForSpecialKeys(
@@ -149,41 +155,6 @@ private:
 		static KeyID	unicharToKeyID(UniChar);
 	};
 
-	class CKCHRKeyResource : public CKeyResource {
-	public:
-		CKCHRKeyResource(const void*);
-
-		// CKeyResource overrides
-		virtual bool	isValid() const;
-		virtual UInt32	getNumModifierCombinations() const;
-		virtual UInt32	getNumTables() const;
-		virtual UInt32	getNumButtons() const;
-		virtual UInt32	getTableForModifier(UInt32 mask) const;
-		virtual KeyID	getKey(UInt32 table, UInt32 button) const;
-
-	private:
-		struct KCHRResource {
-		public:
-			SInt16		m_version;
-			UInt8		m_tableSelectionIndex[256];
-			SInt16		m_numTables;
-			UInt8		m_characterTables[1][128];
-		};
-		struct CKCHRDeadKeyRecord {
-		public:
-			UInt8		m_tableIndex;
-			UInt8		m_virtualKey;
-			SInt16		m_numCompletions;
-			UInt8		m_completion[1][2];
-		};
-		struct CKCHRDeadKeys {
-		public:
-			SInt16				m_numRecords;
-			CKCHRDeadKeyRecord	m_records[1];
-		};
-
-		const KCHRResource*	m_resource;
-	};
 
 	class CUCHRKeyResource : public CKeyResource {
 	public:
@@ -223,7 +194,7 @@ private:
 		KeyButtonOffset = 1
 	};
 
-	typedef std::map<KeyboardLayoutRef, SInt32> GroupMap;
+	typedef std::map<TISInputSourceRef, SInt32> GroupMap;
 	typedef std::map<UInt32, KeyID> CVirtualKeyMap;
 
 	CVirtualKeyMap		m_virtualKeyMap;
