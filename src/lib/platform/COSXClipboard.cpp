@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "CClipboard.h"
 #include "COSXClipboard.h"
 #include "COSXClipboardUTF16Converter.h"
 #include "COSXClipboardTextConverter.h"
+#include "CClipboard.h"
 #include "CLog.h"
 #include "XArch.h"
 

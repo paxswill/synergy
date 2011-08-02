@@ -15,6 +15,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if SYSAPI_WIN32
+#include "CArchMiscWindows.h"
+#endif
+
+#if WINAPI_MSWINDOWS
+#include "CMSWindowsScreen.h"
+#elif WINAPI_XWINDOWS
+#include "CXWindowsScreen.h"
+#elif WINAPI_CARBON
+#include "COSXScreen.h"
+#endif
+
 #include "CServerApp.h"
 #include "CLog.h"
 #include "CArch.h"
@@ -32,18 +44,6 @@
 #include "CEventQueue.h"
 #include "LogOutputters.h"
 #include "CFunctionEventJob.h"
-
-#if SYSAPI_WIN32
-#include "CArchMiscWindows.h"
-#endif
-
-#if WINAPI_MSWINDOWS
-#include "CMSWindowsScreen.h"
-#elif WINAPI_XWINDOWS
-#include "CXWindowsScreen.h"
-#elif WINAPI_CARBON
-#include "COSXScreen.h"
-#endif
 
 #include <iostream>
 #include <stdio.h>
