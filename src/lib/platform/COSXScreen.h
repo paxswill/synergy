@@ -322,6 +322,9 @@ private:
 	// Quartz input event support
 	CFMachPortRef			m_eventTapPort;
 	CFRunLoopSourceRef		m_eventTapRLSR;
+	
+	// Quartz Event Sources
+	CGEventSourceRef		m_eventSource;
 };
 
 #endif

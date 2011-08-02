@@ -171,6 +171,9 @@ COSXScreen::COSXScreen(bool isPrimary) :
 
 	// install the platform event queue
 	EVENTQUEUE->adoptBuffer(new COSXEventQueueBuffer);
+	
+	// Get an event source
+	m_eventSource = CGEventSourceCreate(kCGEventSourceStateCombinedSessionState);
 }
 
 COSXScreen::~COSXScreen()
@@ -222,6 +225,8 @@ COSXScreen::~COSXScreen()
 
 	delete m_keyState;
 	delete m_screensaver;
+	
+	CFRelease(m_eventSource);
 }
 
 void*
@@ -699,7 +704,7 @@ COSXScreen::enter()
 		m_cursorHidden = false;
 	}
 	if (m_isPrimary) {
-		CGSetLocalEventsSuppressionInterval(0.0);
+		CGEventSourceSetLocalEventsSuppressionInterval(m_eventSource, 0.0);
 		
 		// enable global hotkeys
 		//setGlobalHotKeysEnabled(true);
@@ -710,10 +715,12 @@ COSXScreen::enter()
 
 		// avoid suppression of local hardware events
 		// stkamp@users.sourceforge.net
-		CGSetLocalEventsFilterDuringSupressionState(
+		CGEventSourceSetLocalEventsFilterDuringSuppressionState(
+								m_eventSource,
 								kCGEventFilterMaskPermitAllEvents,
 								kCGEventSupressionStateSupressionInterval);
-		CGSetLocalEventsFilterDuringSupressionState(
+		CGEventSourceSetLocalEventsFilterDuringSuppressionState(
+								m_eventSource,
 								(kCGEventFilterMaskPermitLocalKeyboardEvents |
 								kCGEventFilterMaskPermitSystemDefinedEvents),
 								kCGEventSupressionStateRemoteMouseDrag);
@@ -739,7 +746,7 @@ COSXScreen::leave()
 		// This used to be necessary to get smooth mouse motion on other screens,
 		// but now is just to avoid a hesitating cursor when transitioning to
 		// the primary (this) screen.
-		CGSetLocalEventsSuppressionInterval(0.0001);
+		CGEventSourceSetLocalEventsSuppressionInterval(m_eventSource, 0.0001);
 		
 		// disable global hotkeys
 		//setGlobalHotKeysEnabled(false);
