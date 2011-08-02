@@ -99,7 +99,7 @@ COSXScreen::COSXScreen(bool isPrimary) :
 		}
 		
 		// install display manager notification handler
-#if defined(MAC_OS_X_VERSION_10_5)
+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
 		CGDisplayRegisterReconfigurationCallback(displayReconfigurationCallback, this);
 #else
 		m_displayManagerNotificationUPP =
@@ -140,7 +140,7 @@ COSXScreen::COSXScreen(bool isPrimary) :
 		if (m_switchEventHandlerRef != 0) {
 			RemoveEventHandler(m_switchEventHandlerRef);
 		}
-#if defined(MAC_OS_X_VERSION_10_5)
+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
 		CGDisplayRemoveReconfigurationCallback(displayReconfigurationCallback, this);
 #else
 		if (m_displayManagerNotificationUPP != NULL) {

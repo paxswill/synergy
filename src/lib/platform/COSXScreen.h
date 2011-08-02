@@ -116,7 +116,7 @@ private:
 	bool				onMouseButton(bool pressed, UInt16 macButton);
 	bool				onMouseWheel(SInt32 xDelta, SInt32 yDelta) const;
 	
-	#if !defined(MAC_OS_X_VERSION_10_5)
+	#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
 	bool				onDisplayChange();
 	#endif
 	void				constructMouseButtonEventMap();
@@ -153,7 +153,7 @@ private:
 	// clipboard check timer handler
 	void				handleClipboardCheck(const CEvent&, void*);
 
-#if defined(MAC_OS_X_VERSION_10_5)
+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
 	// Resolution switch callback
 	static void	displayReconfigurationCallback(CGDirectDisplayID,
 							CGDisplayChangeSummaryFlags, void*);
@@ -288,7 +288,7 @@ private:
 	// does not have focus.
 	WindowRef			m_userInputWindow;
 
-#if !defined(MAC_OS_X_VERSION_10_5)
+#if (MAC_OS_X_VERSION_MAX_REQUIRED >= MAC_OS_X_VERSION_10_5)
 	// display manager stuff (to get screen resolution switches).
 	DMExtendedNotificationUPP   m_displayManagerNotificationUPP;
 	ProcessSerialNumber			m_PSN;
