@@ -143,9 +143,21 @@ if (UNIX)
 	
 	if (APPLE)
 
-		# build mac os x universal
-		set(CMAKE_OSX_ARCHITECTURES "ppc;i386"
-			CACHE STRING "Build architectures for OSX" FORCE)
+		# Apple removed PPC support in Xcode 4, as well as the 10.4 SDK
+		execute_process(COMMAND /usr/bin/xcodebuild -version COMMAND grep -o "[0-9]\\.[0-9.]*$" OUTPUT_VARIABLE XcodeVersion)
+		if (XcodeVersion VERSION_LESS 2.1)
+			# PPC 10.4
+			set(CMAKE_OSX_ARCHITECTURES "ppc"
+				CACHE STRING "Build architectures for OSX" FORCE)
+		elseif ((XcodeVersion VERSION_GREATER "2.0") AND (XcodeVersion VERSION_LESS "4.0"))
+			# Universal PPC and Intel
+			set(CMAKE_OSX_ARCHITECTURES "ppc;i386"
+				CACHE STRING "Build architectures for OSX" FORCE)
+		else ()
+			# Xcode 4
+			set(CMAKE_OSX_ARCHITECTURES "i386"
+				CACHE STRING "Build architectures for OSX" FORCE)
+		endif ()
 
 		find_library(lib_ScreenSaver ScreenSaver)
 		find_library(lib_IOKit IOKit)
